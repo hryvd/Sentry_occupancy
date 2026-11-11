@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from parking_occupancy.capture import CameraCapture, CaptureConfig
-from parking_occupancy.inference import YOLODetector
+from parking_occupancy.inference import SyntheticDetector, YOLODetector
 from parking_occupancy.geometry import PolygonMap
 from parking_occupancy.smoothing import StateSmoother
 from parking_occupancy.freshness import FreshnessTracker
@@ -65,6 +65,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="Stop after N frames (useful for CI smoke tests)",
     )
+    p.add_argument(
+        "--synthetic-detector",
+        action="store_true",
+        help="Use SyntheticDetector (useful when YOLO weights are not yet downloaded)",
+    )
     return p
 
 
@@ -98,7 +103,11 @@ def main() -> int:
         capture_source = capture_cfg.source  # live camera URL/index
 
     capture = CameraCapture(source=capture_source, config=capture_cfg)
-    detector = YOLODetector.from_config(capture_cfg)
+    if args.synthetic_detector or not capture_cfg.model_path:
+        logger.info("Using SyntheticDetector (weights not specified or --synthetic-detector passed)")
+        detector = SyntheticDetector([])
+    else:
+        detector = YOLODetector.from_config(capture_cfg)
     smoother = StateSmoother.from_config(capture_cfg)
     freshness = FreshnessTracker.from_config(capture_cfg)
 
