@@ -1,0 +1,31 @@
+# Camera configuration example
+# Copy and fill in real values in a private override (not tracked in Git)
+
+camera_id: cam-lot-a-01
+lot_code: A
+device_id: occupancy-lot-a-01
+model_version: occupancy-demo-1
+
+# Camera source: webcam index (0), RTSP URL, or file path
+# Leave empty to require --still / --folder / --video CLI flag
+source: ""
+
+# Reference resolution — MUST match the resolution used during polygon calibration
+# If the camera outputs a different resolution, frames are auto-resized to this
+reference_resolution: [1280, 960]
+
+# Path to polygon config JSON (relative to module root)
+polygon_config: configs/polygons/example.json
+
+# YOLO model weights path (download separately; not tracked in Git)
+# model_path: models/yolov8n.pt
+model_path: ""
+
+# Temporal smoothing — N consecutive frames needed to confirm a state transition
+smoothing_consecutive_frames: 3
+
+# Freshness — seconds without a frame before all spaces become unknown
+freshness_threshold_s: 30.0
+
+# Heartbeat interval — seconds between device_heartbeat events to backend
+heartbeat_interval_s: 60.0

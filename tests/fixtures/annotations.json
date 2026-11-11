@@ -1,0 +1,18 @@
+{
+  "_comment": "Ground-truth annotations for synthetic test fixtures. Format: { filename: { space_id: status } }",
+  "example_empty.jpg": {
+    "30000000-0000-4000-8000-000000000001": "available",
+    "30000000-0000-4000-8000-000000000002": "available",
+    "30000000-0000-4000-8000-000000000003": "available"
+  },
+  "example_full.jpg": {
+    "30000000-0000-4000-8000-000000000001": "occupied",
+    "30000000-0000-4000-8000-000000000002": "occupied",
+    "30000000-0000-4000-8000-000000000003": "occupied"
+  },
+  "example_partial.jpg": {
+    "30000000-0000-4000-8000-000000000001": "occupied",
+    "30000000-0000-4000-8000-000000000002": "available",
+    "30000000-0000-4000-8000-000000000003": "available"
+  }
+}

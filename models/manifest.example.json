@@ -1,0 +1,19 @@
+{
+  "_comment": "Synthetic example manifest. Replace with real weights info before evaluation.",
+  "model_id": "yolov8n-coco",
+  "version": "occupancy-demo-1",
+  "source_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n.pt",
+  "license": "AGPL-3.0",
+  "weights_filename": "yolov8n.pt",
+  "sha256_checksum": "REPLACE_WITH_REAL_CHECKSUM",
+  "input_resolution": [640, 640],
+  "vehicle_classes": {
+    "2": "car",
+    "3": "motorcycle"
+  },
+  "confidence_threshold": 0.4,
+  "iou_threshold": 0.45,
+  "device": "cpu",
+  "evaluation_evidence": "PENDING — run scripts/evaluate.py with held-out fixtures",
+  "notes": "Public COCO-pretrained weights. Download and place at models/yolov8n.pt before inference."
+}

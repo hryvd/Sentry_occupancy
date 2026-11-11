@@ -1,0 +1,36 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment / secrets
+.env
+*.env.local
+
+# AI model weights (large binary artifacts — track manifest only)
+models/*.pt
+models/*.onnx
+models/*.weights
+models/*.bin
+
+# Private datasets and outputs
+datasets/raw/
+datasets/processed/
+datasets/evaluation/
+outputs/
+
+# Private polygon overrides (contain camera credentials/coordinates)
+configs/polygons/lot_a_view1.json
+configs/polygons/lot_b_view2.json
+configs/polygons/lot_c_view3.json
+
+# OS
+.DS_Store
+Thumbs.db
