@@ -29,3 +29,4 @@ freshness_threshold_s: 30.0
 
 # Heartbeat interval — seconds between device_heartbeat events to backend
 heartbeat_interval_s: 60.0
+

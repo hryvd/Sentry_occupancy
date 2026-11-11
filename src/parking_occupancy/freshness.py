@@ -160,3 +160,4 @@ class FreshnessTracker:
         Forces staleness check on next apply() call.
         """
         self._last_frame_time -= seconds
+

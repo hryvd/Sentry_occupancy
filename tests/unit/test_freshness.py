@@ -136,3 +136,4 @@ def test_reconnect_clears_stale():
     tracker.apply(0.0, [make_state()])
     tracker.reconnect()
     assert not tracker.is_stale
+

@@ -336,3 +336,4 @@ class PolygonMap:
 
         if errors:
             raise ValueError("Polygon validation failed:\n  " + "\n  ".join(errors))
+

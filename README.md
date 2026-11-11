@@ -231,3 +231,4 @@ python -m pytest tests/ --cov=parking_occupancy --cov-report=term-missing
 
 **Owner / Backup:** _[Assign names before submission]_  
 **Accepted contract version:** CANDIDATE-2026-10-30.2 (provisional — not yet approved)
+

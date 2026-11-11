@@ -30,3 +30,4 @@ Every model version must have a matching manifest recording:
 
 Large weight files (`.pt`, `.onnx`, `.bin`) are gitignored.
 Only `manifest.example.json` and this README are tracked.
+

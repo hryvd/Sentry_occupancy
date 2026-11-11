@@ -239,3 +239,4 @@ class CameraCapture:
         if (w, h) != (ref_w, ref_h):
             image = cv2.resize(image, (ref_w, ref_h), interpolation=cv2.INTER_LINEAR)
         return image
+

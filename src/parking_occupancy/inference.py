@@ -176,3 +176,4 @@ class SyntheticDetector:
     def set_detections(self, detections: Sequence[Detection]) -> None:
         """Update detections between frames in test scenarios."""
         self._detections = list(detections)
+

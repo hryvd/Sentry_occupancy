@@ -186,3 +186,4 @@ class EventEmitter:
     def flush(self) -> None:
         """Flush any pending retries in the client queue."""
         self._client.flush()
+

@@ -134,3 +134,4 @@ class StateSmoother:
         """Reset smoothing state for a space (e.g. after camera reconnect)."""
         if space_id in self._buffers:
             del self._buffers[space_id]
+

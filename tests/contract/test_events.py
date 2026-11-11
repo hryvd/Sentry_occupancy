@@ -178,3 +178,4 @@ def test_heartbeat_required_fields():
     assert ISO_UTC_RE.match(hb["occurred_at"])
     assert hb["data"]["lot_code"] == "A"
     assert UUID_RE.match(hb["data"]["boot_id"])
+

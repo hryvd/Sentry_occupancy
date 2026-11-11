@@ -17,3 +17,4 @@
   "evaluation_evidence": "PENDING — run scripts/evaluate.py with held-out fixtures",
   "notes": "Public COCO-pretrained weights. Download and place at models/yolov8n.pt before inference."
 }
+

@@ -124,3 +124,4 @@ def test_invalid_n_to_occupied():
 def test_invalid_n_to_available():
     with pytest.raises(ValueError):
         StateSmoother(n_to_occupied=2, n_to_available=0)
+

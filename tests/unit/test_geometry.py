@@ -251,3 +251,4 @@ def test_validate_polygon_out_of_bounds():
 def test_validate_polygon_too_few_vertices():
     with pytest.raises(ValueError, match="3 vertices"):
         PolygonMap.validate_polygon([(10, 10), (200, 10)], canvas_size=(400, 300))
+

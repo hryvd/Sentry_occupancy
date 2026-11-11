@@ -322,3 +322,4 @@ Never identifies occupant           Owns official visit/history
 Never reserves/releases spaces      Owns parking assignment records
 Never accesses PostgreSQL           Sole database writer
 ```
+
