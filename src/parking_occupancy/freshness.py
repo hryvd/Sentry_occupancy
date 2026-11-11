@@ -54,6 +54,7 @@ class FreshnessTracker:
         self._boot_id: str = str(uuid.uuid4())
         self._space_trackers: dict[str, _SpaceTracker] = {}
         self._last_frame_time: float = self._clock()
+        self._last_seen_frame_timestamp: float = -1.0
         self._is_stale: bool = False
 
         logger.info("FreshnessTracker initialized. boot_id=%s", self._boot_id)
@@ -96,13 +97,14 @@ class FreshnessTracker:
             self._is_stale = True
 
         if self._is_stale:
-            # Fresh frame arriving NOW — recover from stale
-            if frame_timestamp > self._last_frame_time + 0.001:
+            # Fresh frame arriving NOW — recover from stale only if frame timestamp advanced
+            if frame_timestamp > self._last_seen_frame_timestamp + 0.001:
                 logger.info(
                     "Camera reconnected (new fresh frame). Recovering from stale state."
                 )
                 self._is_stale = False
-                self._last_frame_time = frame_timestamp
+                self._last_frame_time = now
+                self._last_seen_frame_timestamp = frame_timestamp
             else:
                 # Still stale — all spaces unknown
                 return [
@@ -116,7 +118,8 @@ class FreshnessTracker:
                     for s in smoothed_states
                 ]
 
-        self._last_frame_time = frame_timestamp
+        self._last_frame_time = now
+        self._last_seen_frame_timestamp = frame_timestamp
 
         # --- Assign sequence numbers --------------------------------------
         result: list[SpaceState] = []
