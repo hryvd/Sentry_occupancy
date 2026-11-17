@@ -109,10 +109,26 @@ If the camera is physically moved, `calibration_version` mismatch is detected an
 
 ---
 
+## Module & Step Specifications (`docs/`)
+
+Detailed architecture and development specs for each step and module live in [`docs/`](docs/README.md):
+
+1. [Initialization & Dual-Source Ingestion](docs/01_INITIALIZATION_AND_INGESTION.md) — Startup bootstrap, CCTV vs. optimized-angle camera streams, dummy data modes
+2. [Geometry & Perspective Warping](docs/02_GEOMETRY_AND_WARPING.md) — Image reshaping, homography $H$, BEV mapping, footprint projection, slot area validation
+3. [Adaptive Mapping of Slots](docs/02B_ADAPTIVE_SLOT_MAPPING.md) — Micro-drift $\Delta H$ alignment, unlined-row partitioning, effective polygons ($P_{\text{eff}}$), perspective-depth scaling
+4. [Supporting Object Detection](docs/03_OBJECT_DETECTION_SUPPORT.md) — Lightweight YOLO / `SyntheticDetector` with lower supporting confidence weight
+5. [Contextual Awareness](docs/04_CONTEXTUAL_AWARENESS.md) — Area consumed vs. remaining free area, cross-slot spillover, neighbor occlusion/blocking (dummy data)
+6. [Cognitive Fusion AI Model](docs/05_COGNITIVE_AI_FUSION_MODEL.md) — Connects `slot_number`, `slot_area`, `initial_recognition`, `confidence_interval`, `1-minute mean confidence`, and `final_call`
+7. [Smoothing, Freshness & Events](docs/06_SMOOTHING_FRESHNESS_AND_EVENTS.md) — Hysteresis, 30s stale protection, boot/sequence monotonicity, `CANDIDATE-2026-10-30.2` mock events
+8. [End-to-End Development Roadmap](docs/07_END_TO_END_DEVELOPMENT_ROADMAP.md) — Dummy datasets, build order, and verification targets
+
+---
+
 ## File Structure
 
 ```
 ai_services/parking_occupancy/
+├── docs/                    Module-by-module design & development markdown specs
 ├── src/parking_occupancy/
 │   ├── __init__.py          Version declaration
 │   ├── __main__.py          CLI entry point (--config --still --video --folder)
