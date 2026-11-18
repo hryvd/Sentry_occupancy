@@ -554,41 +554,80 @@
       { id: 'M7',  zone: 'middle', planStatus: 'informal',    anchor: [1068, 520],  topview: [788.2, 284.3],   meters: [13.1, 4.7],  det: 1, z: 7.0,  pass: 'far',  agreement: 'both', note: 'blue car (far end of column)' }
     ];
 
-    const AREA_B2_SLOTS = AREA_B2_RAW_ROWS.map((r, i) => {
-      const idxStr = String(i + 1).padStart(2, '0');
-      const isOccupied = (r.det === 1);
-      const consumed = r.agreement === 'both' ? 0.94 : (r.agreement === 'one' ? 0.72 : 0.04);
-      const yoloConf = r.agreement === 'both' ? 0.62 : (r.agreement === 'one' ? 0.41 : 0.05);
+    function buildB2Slots(rawRows) {
+      return rawRows.map((r, i) => {
+        const idxStr = String(i + 1).padStart(2, '0');
+        const id = r.id || r.slot;
+        const det = r.det !== undefined ? r.det : (r.detector_box || 0);
+        const agreement = r.agreement || 'none';
+        const heightZ = r.z !== undefined ? r.z : (r.height_z !== undefined ? r.height_z : null);
+        const depthPass = r.pass || r.depth_pass || 'near';
+        const planStatus = r.planStatus || r.status || 'unconfirmed';
+        const isOccupied = (r.sentry_status ? r.sentry_status === 'occupied' : det === 1);
+        const consumed = agreement === 'both' ? 0.94 : (det === 1 ? 0.78 : (agreement === 'one' ? 0.35 : 0.04));
+        const yoloConf = agreement === 'both' ? 0.62 : (det === 1 ? 0.41 : 0.05);
+        return {
+          id,
+          uuid: `30000000-0000-4000-8000-0000000001${idxStr}`,
+          lot: 'B2',
+          compat: 'car_only',
+          areaM2: 12.00,
+          totalPx: 43200,
+          zone: r.zone,
+          planStatus,
+          anchor: r.anchor || null,
+          topview: r.topview || null,
+          meters: r.meters || null,
+          det,
+          heightZ,
+          depthPass,
+          agreement,
+          note: r.note || '',
+          sentryStatus: r.sentry_status !== undefined ? r.sentry_status : (det === 1 ? 'occupied' : 'available'),
+          sentryConfidence: r.sentry_confidence !== undefined ? r.sentry_confidence : null,
+          matchedBox: r.matched_box || null,
+          yoloClass: det === 1 ? 'car' : null,
+          yoloConf,
+          consumedRatio: consumed,
+          status: isOccupied ? 'occupied' : 'available',
+          camPolygon: r.anchor ? [
+            [r.anchor[0] * (640/2048) - 18, r.anchor[1] * (480/1536) - 14],
+            [r.anchor[0] * (640/2048) + 18, r.anchor[1] * (480/1536) - 14],
+            [r.anchor[0] * (640/2048) + 18, r.anchor[1] * (480/1536) + 14],
+            [r.anchor[0] * (640/2048) - 18, r.anchor[1] * (480/1536) + 14]
+          ] : [[0,0],[0,0],[0,0],[0,0]],
+          bevRect: { x: 0, y: 0, w: 0, h: 0 }
+        };
+      });
+    }
+
+    function getB2Stats(slots) {
+      const bothSlots = slots.filter(s => s.agreement === 'both');
+      const oneSlots = slots.filter(s => s.agreement === 'one');
+      const noneSlots = slots.filter(s => s.agreement === 'none');
+      const seenSlots = slots.filter(s => s.det === 1 || s.agreement === 'both');
+      const formatIds = (arr) => arr.length ? (arr.length > 6 ? `${arr.slice(0, 5).map(s => s.id).join(', ')} +${arr.length - 5}` : arr.map(s => s.id).join(', ')) : 'None';
       return {
-        id: r.id,
-        uuid: `30000000-0000-4000-8000-0000000001${idxStr}`,
-        lot: 'B2',
-        compat: 'car_only',
-        areaM2: 12.00,
-        totalPx: 43200,
-        zone: r.zone,
-        planStatus: r.planStatus,
-        anchor: r.anchor,
-        topview: r.topview,
-        meters: r.meters,
-        det: r.det,
-        heightZ: r.z,
-        depthPass: r.pass,
-        agreement: r.agreement,
-        note: r.note,
-        yoloClass: r.det === 1 ? 'car' : null,
-        yoloConf,
-        consumedRatio: consumed,
-        status: isOccupied ? 'occupied' : 'available',
-        camPolygon: r.anchor ? [
-          [r.anchor[0] * (640/2048) - 18, r.anchor[1] * (480/1536) - 14],
-          [r.anchor[0] * (640/2048) + 18, r.anchor[1] * (480/1536) - 14],
-          [r.anchor[0] * (640/2048) + 18, r.anchor[1] * (480/1536) + 14],
-          [r.anchor[0] * (640/2048) - 18, r.anchor[1] * (480/1536) + 14]
-        ] : [[0,0],[0,0],[0,0],[0,0]],
-        bevRect: { x: 0, y: 0, w: 0, h: 0 }
+        total: slots.length,
+        both: bothSlots.length,
+        one: oneSlots.length,
+        none: noneSlots.length,
+        seen: seenSlots.length,
+        boxes: slots.filter(s => s.det === 1).length,
+        leftTotal: slots.filter(s => s.zone === 'left').length,
+        rightTotal: slots.filter(s => s.zone === 'right').length,
+        midTotal: slots.filter(s => s.zone === 'middle').length,
+        leftSeen: slots.filter(s => s.zone === 'left' && (s.det === 1 || s.agreement === 'both')).length,
+        rightSeen: slots.filter(s => s.zone === 'right' && (s.det === 1 || s.agreement === 'both')).length,
+        midSeen: slots.filter(s => s.zone === 'middle' && (s.det === 1 || s.agreement === 'both')).length,
+        probableRight: slots.filter(s => s.zone === 'right' && s.planStatus === 'probable').length,
+        bothList: formatIds(bothSlots),
+        oneList: formatIds(oneSlots),
+        noneList: formatIds(noneSlots)
       };
-    });
+    }
+
+    const AREA_B2_SLOTS = buildB2Slots(AREA_B2_RAW_ROWS);
 
     // ════════════════════════════════════════════════════════════════
     // CALIBRATED CONFIGURATIONS FOR CAMPUS VIEWS
@@ -650,7 +689,9 @@
       showGrid: true,
       showWarpedPlane: true,
       loadedImage: null,
+      customLoadedImage: null,
       b2OverlayImages: {},
+      b2OverlaysSourceKey: null,
       sourceName: 'area_b2_raw.jpg',
       isCustomImage: false,
       isAnalyzing: false,
@@ -661,19 +702,26 @@
       return SCENE_CONFIGS[state.currentSceneKey] || SCENE_CONFIGS['samples/area_b2_raw.jpg'];
     }
 
-    function preloadB2Overlays() {
-      const cfg = SCENE_CONFIGS['samples/area_b2_raw.jpg'];
-      if (!cfg || !cfg.overlayUrls) return;
-      Object.entries(cfg.overlayUrls).forEach(([key, url]) => {
-        if (state.b2OverlayImages[key]) return;
+    function loadB2Overlays(overlayUrls, sourceKey = state.currentSceneKey) {
+      if (!overlayUrls) return Promise.resolve();
+      if (state.b2OverlaysSourceKey === sourceKey && Object.keys(state.b2OverlayImages).length === Object.keys(overlayUrls).length) {
+        return Promise.resolve();
+      }
+      state.b2OverlayImages = {};
+      state.b2OverlaysSourceKey = sourceKey;
+      return Promise.all(Object.entries(overlayUrls).map(([key, url]) => new Promise((resolve) => {
         const im = new Image();
         im.crossOrigin = 'anonymous';
         im.onload = () => {
-          state.b2OverlayImages[key] = im;
-          if (getActiveConfig().isAreaB2) renderAll();
+          if (state.b2OverlaysSourceKey === sourceKey) {
+            state.b2OverlayImages[key] = im;
+            renderAll();
+          }
+          resolve();
         };
+        im.onerror = () => resolve();
         im.src = url;
-      });
+      })));
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -809,16 +857,16 @@
         const col = B2_AGREEMENT_COLORS[slot.agreement] || '#10b981';
 
         ctx.save();
-        if (slot.planStatus === 'unconfirmed') {
+        if (slot.agreement === 'none' || slot.planStatus === 'unconfirmed') {
           ctx.fillStyle = 'rgba(244, 63, 94, 0.12)';
-        } else if (slot.planStatus === 'probable') {
-          ctx.fillStyle = 'rgba(245, 158, 11, 0.18)';
+        } else if (slot.agreement === 'one' || slot.planStatus === 'probable') {
+          ctx.fillStyle = 'rgba(245, 158, 11, 0.20)';
         } else {
-          ctx.fillStyle = slot.agreement === 'both' ? 'rgba(16, 185, 129, 0.24)' : 'rgba(245, 158, 11, 0.22)';
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.24)';
         }
         ctx.fillRect(x, y, w, h);
 
-        if (slot.planStatus === 'unconfirmed') {
+        if (slot.agreement === 'none' || slot.planStatus === 'unconfirmed') {
           ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
           ctx.lineWidth = 1;
           for (let sx = 0; sx < w; sx += 8) {
@@ -934,24 +982,26 @@
       if (cfg.isAreaB2) {
         const isConfirmedBoth = slot.agreement === 'both';
         const isOneOnly = slot.agreement === 'one';
+        let finalCall = slot.sentryStatus || 'unknown';
         let instantConfidence = 0.25;
-        let finalCall = 'unknown';
 
-        if (slot.planStatus === 'unconfirmed') {
+        if (slot.sentryConfidence !== null && slot.sentryConfidence !== undefined) {
+          instantConfidence = slot.sentryConfidence;
+        } else if (finalCall === 'available' || slot.planStatus === 'unconfirmed') {
           finalCall = 'available';
-          instantConfidence = 0.72; // empty / not seen even on zoomed crops
+          instantConfidence = 0.72;
         } else if (isConfirmedBoth) {
           finalCall = 'occupied';
           instantConfidence = slot.depthPass === 'near' ? 0.96 : 0.93;
         } else if (isOneOnly) {
-          finalCall = slot.planStatus === 'probable' ? 'occupied' : 'occupied';
+          finalCall = 'occupied';
           instantConfidence = slot.planStatus === 'probable' ? 0.64 : 0.78;
         }
 
         const se = isConfirmedBoth ? 0.015 : 0.075;
         const ciLow = Math.max(0.0, instantConfidence - 1.96 * se).toFixed(2);
         const ciHigh = Math.min(1.0, instantConfidence + 1.96 * se).toFixed(2);
-        const mean = ((state.confidenceHistory.reduce((a, b) => a + b, 0) / state.confidenceHistory.length) * (isConfirmedBoth ? 1.0 : (isOneOnly ? 0.80 : 0.76))).toFixed(3);
+        const mean = instantConfidence.toFixed(3);
 
         return {
           slot, consumedRatio, remainingRatio,
@@ -1083,22 +1133,42 @@
           ctx.restore();
         }
 
-        // Step 4: Draw far-end zoomed 640x640 detector crop regions
-        if (step === 4 && cfg.farZooms) {
-          Object.entries(cfg.farZooms).forEach(([label, [x0, y0, x1, y1]]) => {
-            ctx.save();
-            ctx.strokeStyle = '#f59e0b';
-            ctx.lineWidth = 1.8;
-            ctx.setLineDash([5, 3]);
-            ctx.strokeRect(x0 * sx, y0 * sy, (x1 - x0) * sx, (y1 - y0) * sy);
-            ctx.setLineDash([]);
-            ctx.fillStyle = 'rgba(245, 158, 11, 0.9)';
-            ctx.fillRect(x0 * sx, y0 * sy - 14, 116, 14);
-            ctx.fillStyle = '#020617';
-            ctx.font = 'bold 8px JetBrains Mono';
-            ctx.fillText(`YOLOX zoom: ${label}`, x0 * sx + 3, y0 * sy - 4);
-            ctx.restore();
-          });
+        // Step 4: Draw far-end zoomed 640x640 detector crop regions + live YOLOX bounding boxes
+        if (step === 4) {
+          if (cfg.farZooms) {
+            Object.entries(cfg.farZooms).forEach(([label, [x0, y0, x1, y1]]) => {
+              ctx.save();
+              ctx.strokeStyle = '#f59e0b';
+              ctx.lineWidth = 1.8;
+              ctx.setLineDash([5, 3]);
+              ctx.strokeRect(x0 * sx, y0 * sy, (x1 - x0) * sx, (y1 - y0) * sy);
+              ctx.setLineDash([]);
+              ctx.fillStyle = 'rgba(245, 158, 11, 0.9)';
+              ctx.fillRect(x0 * sx, y0 * sy - 14, 116, 14);
+              ctx.fillStyle = '#020617';
+              ctx.font = 'bold 8px JetBrains Mono';
+              ctx.fillText(`YOLOX zoom: ${label}`, x0 * sx + 3, y0 * sy - 4);
+              ctx.restore();
+            });
+          }
+          if (cfg.detectedBoxes && cfg.detectedBoxes.length > 0) {
+            cfg.detectedBoxes.forEach(([bx0, by0, bx1, by1, bscore]) => {
+              const rx = bx0 * sx;
+              const ry = by0 * sy;
+              const rw = (bx1 - bx0) * sx;
+              const rh = (by1 - by0) * sy;
+              ctx.save();
+              ctx.strokeStyle = '#fbbf24';
+              ctx.lineWidth = 1.6;
+              ctx.strokeRect(rx, ry, rw, rh);
+              ctx.fillStyle = 'rgba(251, 191, 36, 0.88)';
+              ctx.fillRect(rx, Math.max(0, ry - 12), 42, 12);
+              ctx.fillStyle = '#020617';
+              ctx.font = 'bold 8px JetBrains Mono';
+              ctx.fillText(`${Math.round(bscore * 100)}%`, rx + 3, Math.max(9, ry - 3));
+              ctx.restore();
+            });
+          }
         }
 
         // Step 5: Draw bare-concrete ground plane reference patches (MiDaS residual fit)
@@ -1441,12 +1511,13 @@
         document.getElementById('metricForeshortening').textContent = '31.8° Pitch (H=R·K⁻¹)';
         document.getElementById('metricOcclusionRisk').textContent = 'Far Ends Stacked (R9-10)';
         document.getElementById('metricQuadError').textContent = 'Scale: 2.55m Wheelbase';
-        document.getElementById('slotStatusReadout').textContent = '22 Both • 5 One • 2 None';
-        document.getElementById('mapSummaryBadge').textContent = '27 / 29 Seen';
+        const stats = getB2Stats(cfg.slots);
+        document.getElementById('slotStatusReadout').textContent = `${stats.both} Both • ${stats.one} One • ${stats.none} None`;
+        document.getElementById('mapSummaryBadge').textContent = `${stats.seen} / ${stats.total} Seen`;
         document.getElementById('mapLegend').innerHTML = `
-          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Both (22)</span>
-          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> One (5)</span>
-          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> None (2)</span>
+          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Both (${stats.both})</span>
+          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> One (${stats.one})</span>
+          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> None (${stats.none})</span>
         `;
       } else {
         document.getElementById('bevOverlayBadge').textContent = 'Rectified Metric Grid (1px ≈ 1.25cm)';
@@ -1488,8 +1559,11 @@
 
       const badge = document.getElementById('inspectorFinalBadge');
       if (isB2) {
-        if (m.slot.planStatus === 'unconfirmed') {
-          badge.textContent = 'UNCONFIRMED (EMPTY)';
+        if (m.finalCall === 'unknown') {
+          badge.textContent = 'UNCONFIRMED (UNKNOWN)';
+          badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-slate-800 text-slate-300 border border-slate-700';
+        } else if (m.finalCall === 'available' || m.slot.planStatus === 'unconfirmed') {
+          badge.textContent = m.slot.planStatus === 'probable' ? 'AVAILABLE (DEPTH ONLY)' : 'AVAILABLE (EMPTY)';
           badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-emerald-950 text-emerald-300 border border-emerald-800';
         } else if (m.slot.planStatus === 'probable') {
           badge.textContent = 'OCCUPIED (PROBABLE)';
@@ -1564,19 +1638,19 @@
                     Area B2 Pinhole Intrinsics (topview_slots.py)
                   </div>
                   <ul class="text-[11px] text-slate-300 space-y-1 font-mono">
-                    <li>• Resolution: <span class="text-slate-100">2048 × 1536 px</span></li>
-                    <li>• Focal Length F: <span class="text-cyan-300">1000.0 px</span></li>
-                    <li>• Pitch Offset A: <span class="text-cyan-300">620.0 (≈ 31.8°)</span></li>
+                    <li>• Source: <span class="text-emerald-300">${state.sourceName}</span></li>
+                    <li>• Resolution: <span class="text-slate-100">${cfg.res}${state.isCustomImage ? ' → 2048×1536 warp' : ''}</span></li>
+                    <li>• Focal Length F / Pitch A: <span class="text-cyan-300">1000.0 px / 620.0 (≈ 31.8°)</span></li>
                     <li>• Camera Roll: <span class="text-cyan-300">-7.0° • Horizon ≈ row 148</span></li>
                   </ul>
                 </div>
                 <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1.5">
                   <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
                     <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
-                    Pretrained Audit Note (One-Photo Baseline)
+                    Pretrained Audit Note (Local B2 Pipeline)
                   </div>
                   <p class="text-[11px] text-slate-300 leading-relaxed">
-                    A single photo isn't a training dataset, so Area B2 pairs a calibrated geometric pinhole warp with <strong class="text-cyan-300">two orthogonal pretrained networks</strong> (<code class="text-amber-300">YOLOX-L</code> + <code class="text-emerald-300">MiDaS-small</code>) checking each slot.
+                    Every uploaded or sample Area B2 frame runs through the calibrated geometric pinhole warp and <strong class="text-cyan-300">two orthogonal pretrained networks</strong> (<code class="text-amber-300">YOLOX-L</code> + <code class="text-emerald-300">MiDaS-small</code>) checking all 29 slots.
                   </p>
                 </div>
               </div>
@@ -1684,27 +1758,28 @@
         render: () => {
           const cfg = getActiveConfig();
           if (cfg.isAreaB2) {
+            const stats = getB2Stats(cfg.slots);
             return `
               <div class="space-y-3 text-xs">
                 <div class="grid grid-cols-3 gap-2">
                   <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
                     <div class="text-blue-400 uppercase font-mono text-[10px] font-bold">Left Row (L1–L11)</div>
-                    <div class="text-slate-200 font-bold text-sm font-mono mt-0.5">10 / 11 Seen</div>
-                    <div class="text-[10px] text-slate-400 mt-0.5">L1–L10 confirmed; L11 not visible even in zoomed crop.</div>
+                    <div class="text-slate-200 font-bold text-sm font-mono mt-0.5">${stats.leftSeen} / ${stats.leftTotal} Seen</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">Left kerb bays projected onto metric top-view plane.</div>
                   </div>
-                  <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                  <div class="bg-orange-950/20 p-2.5 rounded-xl border border-slate-800">
                     <div class="text-orange-400 uppercase font-mono text-[10px] font-bold">Right Row (R1–R11)</div>
-                    <div class="text-slate-200 font-bold text-sm font-mono mt-0.5">8 + 2 Probable</div>
-                    <div class="text-[10px] text-slate-400 mt-0.5">R1–R8 solid; R9–R10 stacked behind van R6; R11 absent.</div>
+                    <div class="text-slate-200 font-bold text-sm font-mono mt-0.5">${stats.rightSeen} / ${stats.rightTotal} Seen</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">${stats.probableRight ? `${stats.probableRight} probable far-end slots` : 'Right kerb bays near to far end'}.</div>
                   </div>
                   <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
                     <div class="text-emerald-400 uppercase font-mono text-[10px] font-bold">Middle Aisle (M1–M7)</div>
-                    <div class="text-slate-200 font-bold text-sm font-mono mt-0.5">7 / 7 Informal</div>
-                    <div class="text-[10px] text-slate-400 mt-0.5">M1–M3 front + M4 parked crosswise + M5–M7 column.</div>
+                    <div class="text-slate-200 font-bold text-sm font-mono mt-0.5">${stats.midSeen} / ${stats.midTotal} Informal</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">M1–M3 front + M4 crosswise + M5–M7 column.</div>
                   </div>
                 </div>
                 <div class="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800 text-[11px] text-slate-400">
-                  <strong>Fixed-Camera Mapping:</strong> Once set per camera via <code class="text-cyan-300">topview_slots.py</code>, every frame reuses the exact anchor projection into metric world coordinates (x_m, y_m).
+                  <strong>Fixed-Camera Mapping (${cfg.res}):</strong> Once set per camera via <code class="text-cyan-300">topview_slots.py</code>, every frame reuses the exact anchor projection into metric world coordinates (x_m, y_m).
                 </div>
               </div>
             `;
@@ -1742,22 +1817,24 @@
           const cfg = getActiveConfig();
           const active = cfg.slots[state.selectedSlotIndex];
           if (cfg.isAreaB2) {
+            const stats = getB2Stats(cfg.slots);
+            const detBoxNote = cfg.detectedBoxes ? ` • ${cfg.detectedBoxes.length} vehicle boxes` : '';
             return `
               <div class="space-y-3 text-xs">
                 <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
                   <div>
                     <div class="font-bold text-slate-200">Model A: Pretrained YOLOX-L (ONNX CPU)</div>
-                    <div class="text-slate-400 text-[11px]">Full tiled pass (<span class="font-mono text-amber-400">score > 0.30</span>) + Far-end 640×640 zoom (<span class="font-mono text-amber-400">> 0.25</span>)</div>
+                    <div class="text-slate-400 text-[11px]">Full tiled pass (<span class="font-mono text-amber-400">score > 0.30</span>) + Far-end 640×640 zoom (<span class="font-mono text-amber-400">> 0.25</span>)${detBoxNote}</div>
                   </div>
                   <span class="px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800 text-[10px] font-mono">
-                    27 / 29 BOXES
+                    ${stats.boxes} / ${stats.total} SLOTS
                   </span>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                   <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-[11px] space-y-1 font-mono">
                     <div class="text-slate-400 text-[10px] uppercase">Zoomed Far-End Verification</div>
-                    <div>far-left: <span class="text-cyan-300">[640,430,1010,640]</span> → no L11</div>
-                    <div>far-right: <span class="text-cyan-300">[1230,430,1570,640]</span> → ~2 dark cars</div>
+                    <div>far-left: <span class="text-cyan-300">[640,430,1010,640]</span></div>
+                    <div>far-right: <span class="text-cyan-300">[1230,430,1570,640]</span></div>
                   </div>
                   <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-[11px] space-y-1 font-mono">
                     <div class="text-slate-400 text-[10px] uppercase">Active Slot (${active.id}) Proposal</div>
@@ -1867,23 +1944,24 @@
           const cfg = getActiveConfig();
           const m = computeSlotMetrics(state.selectedSlotIndex);
           if (cfg.isAreaB2) {
+            const stats = getB2Stats(cfg.slots);
             return `
               <div class="space-y-3 text-xs">
                 <div class="grid grid-cols-3 gap-2 text-center font-mono">
                   <div class="bg-emerald-950/40 p-2 rounded-xl border border-emerald-800/60">
-                    <div class="text-emerald-300 font-bold text-base">22 / 29</div>
+                    <div class="text-emerald-300 font-bold text-base">${stats.both} / ${stats.total}</div>
                     <div class="text-[9px] text-emerald-200/80 uppercase">BOTH Agree (Strong)</div>
-                    <div class="text-[9px] text-slate-400">L1–10, R1–2, R4–8, M1–2, M5–7</div>
+                    <div class="text-[9px] text-slate-400 truncate" title="${stats.bothList}">${stats.bothList}</div>
                   </div>
                   <div class="bg-amber-950/40 p-2 rounded-xl border border-amber-800/60">
-                    <div class="text-amber-300 font-bold text-base">5 / 29</div>
+                    <div class="text-amber-300 font-bold text-base">${stats.one} / ${stats.total}</div>
                     <div class="text-[9px] text-amber-200/80 uppercase">ONE Model Only</div>
-                    <div class="text-[9px] text-slate-400">R3, R9–10 (prob), M3–M4</div>
+                    <div class="text-[9px] text-slate-400 truncate" title="${stats.oneList}">${stats.oneList}</div>
                   </div>
                   <div class="bg-rose-950/40 p-2 rounded-xl border border-rose-800/60">
-                    <div class="text-rose-300 font-bold text-base">2 / 29</div>
-                    <div class="text-[9px] text-rose-200/80 uppercase">NONE (Not Visible)</div>
-                    <div class="text-[9px] text-slate-400">L11, R11 (absent)</div>
+                    <div class="text-rose-300 font-bold text-base">${stats.none} / ${stats.total}</div>
+                    <div class="text-[9px] text-rose-200/80 uppercase">NONE (Empty / Absent)</div>
+                    <div class="text-[9px] text-slate-400 truncate" title="${stats.noneList}">${stats.noneList}</div>
                   </div>
                 </div>
                 <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
@@ -1940,10 +2018,11 @@
           const cfg = getActiveConfig();
           const m = computeSlotMetrics(state.selectedSlotIndex);
           if (cfg.isAreaB2) {
+            const stats = getB2Stats(cfg.slots);
             return `
               <div class="space-y-2.5 text-xs">
                 <div class="bg-indigo-950/40 border border-indigo-800/60 p-2.5 rounded-xl text-indigo-100 text-[11px] leading-relaxed">
-                  <strong>Next Engineering Step (ICT Dataset Fine-Tuning):</strong> Pretrained <code class="text-amber-300">yolox_l.onnx</code> + <code class="text-emerald-300">midas_small.onnx</code> (280 MB downloaded on first run) validate 22/29 slots out of the box. For production occupancy, fine-tune a detector on labelled frames from the <strong>fixed ICT camera feed</strong> while keeping the one-time homography from <code class="text-cyan-300">topview_slots.py</code>.
+                  <strong>Next Engineering Step (ICT Dataset Fine-Tuning):</strong> Pretrained <code class="text-amber-300">yolox_l.onnx</code> + <code class="text-emerald-300">midas_small.onnx</code> (280 MB downloaded locally) confirm ${stats.both}/${stats.total} slots with dual-model agreement. For production occupancy, fine-tune a detector on labelled frames from the <strong>fixed ICT camera feed</strong> while keeping the one-time homography from <code class="text-cyan-300">topview_slots.py</code>.
                 </div>
                 <div class="max-h-36 overflow-y-auto custom-scrollbar rounded-xl border border-slate-800 bg-slate-950/90">
                   <table class="w-full text-[10px] font-mono text-left">
@@ -2075,6 +2154,7 @@
     function loadScene(sceneKey, name) {
       state.currentSceneKey = sceneKey;
       state.sourceName = name;
+      state.isCustomImage = (sceneKey === 'custom');
       state.selectedSlotIndex = 0;
       const cfg = getActiveConfig();
 
@@ -2082,8 +2162,14 @@
       document.getElementById('camResBadge').textContent = cfg.res;
       document.getElementById('camOverlayText').textContent = `Ingested: ${name}`;
 
-      if (cfg.isAreaB2) {
-        preloadB2Overlays();
+      if (cfg.isAreaB2 && cfg.overlayUrls) {
+        loadB2Overlays(cfg.overlayUrls, sceneKey);
+      }
+
+      if (sceneKey === 'custom' && state.customLoadedImage) {
+        state.loadedImage = state.customLoadedImage;
+        renderAll();
+        return;
       }
 
       const img = new Image();
@@ -2099,7 +2185,7 @@
       img.src = sceneKey;
     }
 
-    // Ingest Image
+    // Ingest Image — Always routes through real local Area B2 29-slot YOLOX-L + MiDaS pipeline
     function processPhotoFile(file) {
       if (!file || !file.type.startsWith('image/')) {
         alert('Please choose a valid image file (JPG, PNG, WEBP).');
@@ -2108,46 +2194,36 @@
 
       const reader = new FileReader();
       reader.onload = (e) => {
+        const dataUrl = e.target.result;
         const img = new Image();
-        img.onload = () => {
+        img.onload = async () => {
           state.loadedImage = img;
+          state.customLoadedImage = img;
           state.sourceName = file.name;
           state.isCustomImage = true;
           state.selectedSlotIndex = 0;
+          state.b2OverlayImages = {};
+          state.b2OverlaysSourceKey = 'custom_pending';
 
+          const baseCfg = SCENE_CONFIGS['samples/area_b2_raw.jpg'];
           SCENE_CONFIGS['custom'] = {
-            name: `Custom Ingestion (${file.name})`,
-            lot: 'A',
-            camId: 'cam-custom-01',
+            ...baseCfg,
+            isAreaB2: true,
+            name: `Area B2 Custom (${file.name})`,
+            sourceFilename: file.name,
+            lot: 'B2',
+            camId: 'cam-area-b2-01',
             res: `${img.naturalWidth}×${img.naturalHeight}`,
-            pitch: '45° User Camera',
-            groundQuad: {
-              src: [[80, 200], [560, 200], [610, 440], [30, 440]],
-              dst: [[50, 70], [590, 70], [590, 420], [50, 420]]
-            },
-            slots: [
-              { id: 'C-01', uuid: '30000000-0000-4000-8000-000000000001', lot: 'A', compat: 'car_only', areaM2: 12.50, totalPx: 10000,
-                camPolygon: [[40, 420], [140, 400], [120, 260], [30, 270]], bevRect: { x: 50, y: 80, w: 85, h: 180 },
-                yoloBbox: [45, 270, 95, 80], yoloClass: 'car', yoloConf: 0.54, consumedRatio: 0.94, status: 'occupied' },
-              { id: 'C-02', uuid: '30000000-0000-4000-8000-000000000002', lot: 'A', compat: 'car_only', areaM2: 12.50, totalPx: 10000,
-                camPolygon: [[150, 400], [250, 385], [230, 255], [130, 265]], bevRect: { x: 145, y: 80, w: 85, h: 180 },
-                yoloBbox: null, yoloClass: null, yoloConf: 0.05, consumedRatio: 0.05, status: 'available' },
-              { id: 'C-03', uuid: '30000000-0000-4000-8000-000000000003', lot: 'A', compat: 'car_only', areaM2: 12.50, totalPx: 10000,
-                camPolygon: [[260, 390], [360, 380], [330, 250], [240, 255]], bevRect: { x: 240, y: 80, w: 85, h: 180 },
-                yoloBbox: [265, 260, 90, 75], yoloClass: 'car', yoloConf: 0.52, consumedRatio: 0.91, status: 'occupied' },
-              { id: 'C-04', uuid: '30000000-0000-4000-8000-000000000004', lot: 'A', compat: 'car_only', areaM2: 12.50, totalPx: 10000,
-                camPolygon: [[370, 400], [480, 390], [440, 260], [340, 265]], bevRect: { x: 335, y: 80, w: 85, h: 180 },
-                yoloBbox: [375, 275, 105, 80], yoloClass: 'car', yoloConf: 0.55, consumedRatio: 0.96, status: 'occupied' },
-              { id: 'C-05', uuid: '30000000-0000-4000-8000-000000000005', lot: 'A', compat: 'car_only', areaM2: 12.50, totalPx: 10000,
-                camPolygon: [[490, 410], [600, 395], [550, 270], [450, 275]], bevRect: { x: 430, y: 80, w: 85, h: 180 },
-                yoloBbox: null, yoloClass: null, yoloConf: 0.06, consumedRatio: 0.08, status: 'available' }
-            ]
+            pitch: '31.8° Pinhole (Resized to 2048×1536)',
+            overlayUrls: null,
+            detectedBoxes: [],
+            slots: buildB2Slots(AREA_B2_RAW_ROWS)
           };
 
           state.currentSceneKey = 'custom';
-          document.getElementById('camStreamTitle').textContent = `Custom Ingestion: ${file.name}`;
+          document.getElementById('camStreamTitle').textContent = `Area B2 Custom Ingestion: ${file.name}`;
           document.getElementById('camResBadge').textContent = `${img.naturalWidth}×${img.naturalHeight}`;
-          document.getElementById('camOverlayText').textContent = `Custom Ingested Photo: ${file.name}`;
+          document.getElementById('camOverlayText').textContent = `Custom Area B2: ${file.name}`;
 
           const customGroup = document.getElementById('customOptGroup');
           const customOpt = document.getElementById('customOpt');
@@ -2157,9 +2233,47 @@
             document.getElementById('scenarioSelector').value = 'custom';
           }
 
-          triggerFullAnalysis();
+          renderAll();
+
+          const overlay = document.getElementById('scanOverlay');
+          const progressText = document.getElementById('scanProgressText');
+          state.isAnalyzing = true;
+          if (overlay) overlay.classList.remove('hidden');
+          if (progressText) progressText.textContent = 'Running Local YOLOX-L + MiDaS-Small on Uploaded Frame...';
+
+          try {
+            const resp = await fetch('/api/analyze', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                filename: file.name,
+                image_base64: dataUrl
+              })
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) {
+              throw new Error(data.error || `HTTP ${resp.status}`);
+            }
+
+            SCENE_CONFIGS['custom'].slots = buildB2Slots(data.slots);
+            SCENE_CONFIGS['custom'].detectedBoxes = data.detected_boxes || [];
+            SCENE_CONFIGS['custom'].overlayUrls = data.overlay_urls || null;
+            if (data.area_m) {
+              SCENE_CONFIGS['custom'].areaM = data.area_m;
+            }
+            if (data.overlay_urls) {
+              await loadB2Overlays(data.overlay_urls, 'custom');
+            }
+          } catch (err) {
+            console.error('Local Area B2 custom analysis failed:', err);
+            alert(`Local Area B2 analysis error: ${err.message}\nMake sure run_area_b2_local.py --serve is running on port 8080.`);
+          } finally {
+            if (overlay) overlay.classList.add('hidden');
+            state.isAnalyzing = false;
+            renderAll();
+          }
         };
-        img.src = e.target.result;
+        img.src = dataUrl;
       };
       reader.readAsDataURL(file);
     }
@@ -2235,7 +2349,9 @@
     document.getElementById('scenarioSelector').addEventListener('change', (e) => {
       const val = e.target.value;
       const rawText = e.target.options[e.target.selectedIndex].text.replace(/^(📸|📁)\s*/u, '');
-      if (val.startsWith('samples/')) {
+      if (val === 'custom' && SCENE_CONFIGS['custom']) {
+        loadScene('custom', SCENE_CONFIGS['custom'].sourceFilename || rawText);
+      } else if (val.startsWith('samples/')) {
         loadScene(val, rawText);
       }
     });
