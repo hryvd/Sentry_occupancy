@@ -25,12 +25,9 @@
       background: rgba(71, 85, 105, 0.8);
       border-radius: 3px;
     }
-    .pulse-glow {
-      animation: pulse-glow 2s infinite ease-in-out;
-    }
-    @keyframes pulse-glow {
-      0%, 100% { opacity: 0.9; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.02); }
+    .drop-active {
+      border-color: #06b6d4 !important;
+      background-color: rgba(6, 182, 212, 0.15) !important;
     }
   </style>
 </head>
@@ -60,22 +57,41 @@
               MOCK BACKEND
             </span>
           </div>
-          <p class="text-xs text-slate-400">Homography Warping • Adaptive Mapping • Cognitive Fusion Pipeline</p>
+          <p class="text-xs text-slate-400">Photo Ingestion • Homography Warping • Adaptive Mapping • Cognitive Fusion</p>
         </div>
       </div>
 
-      <!-- Controls: Scenario Selector & Camera Mode -->
+      <!-- Controls: Photo Ingest & Pipeline Controls -->
       <div class="flex items-center gap-3 flex-wrap">
         
-        <!-- Scenario Preset -->
+        <!-- Upload Photo Button -->
+        <label class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-2 transition-all shadow-md shadow-cyan-600/30 cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>Ingest Custom Photo</span>
+          <input type="file" id="photoFileInput" accept="image/*" class="hidden" />
+        </label>
+
+        <!-- Scenario / Preset Selector -->
         <div class="flex items-center gap-1.5 bg-slate-800/80 rounded-lg p-1 border border-slate-700 text-xs">
-          <span class="text-slate-400 px-2 font-medium">Scenario:</span>
+          <span class="text-slate-400 px-2 font-medium">Source / Scene:</span>
           <select id="scenarioSelector" class="bg-slate-900 text-slate-200 border-none rounded px-2.5 py-1 text-xs focus:ring-1 focus:ring-cyan-500 font-medium cursor-pointer">
-            <option value="normal">1. Normal Partial Occupancy</option>
-            <option value="spillover">2. Bad Park: Neighbor Encroachment (Spillover)</option>
-            <option value="occlusion">3. CCTV Oblique Occlusion (Van Shadow)</option>
-            <option value="drift">4. Camera Micro-Drift Vibration (Adaptive Alignment)</option>
-            <option value="empty">5. Baseline Empty Lot</option>
+            <optgroup label="Preset Scenarios">
+              <option value="normal">1. Normal Partial Occupancy</option>
+              <option value="spillover">2. Bad Park: Neighbor Spillover</option>
+              <option value="occlusion">3. CCTV Oblique Occlusion (Van Shadow)</option>
+              <option value="drift">4. Camera Micro-Drift Vibration (Adaptive)</option>
+              <option value="empty">5. Baseline Empty Lot</option>
+            </optgroup>
+            <optgroup label="Ingested Campus Camera Samples">
+              <option value="sample_cam_a">📸 Campus Camera View A (Oblique)</option>
+              <option value="sample_cam_b">📸 Campus Camera View B (Frontal)</option>
+              <option value="sample_cam_c">📸 Campus Camera View C (Overhead)</option>
+              <option value="sample_full">📸 Fixture: example_full.jpg</option>
+              <option value="sample_partial">📸 Fixture: example_partial.jpg</option>
+              <option value="sample_empty">📸 Fixture: example_empty.jpg</option>
+            </optgroup>
           </select>
         </div>
 
@@ -102,6 +118,29 @@
     </div>
   </header>
 
+  <!-- PHOTO INGESTION BANNER / DRAG AND DROP TARGET -->
+  <div class="max-w-7xl mx-auto w-full px-4 pt-3">
+    <div id="dropZone" class="bg-slate-900/40 border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 transition-colors cursor-pointer text-xs">
+      <div class="flex items-center gap-3">
+        <div class="h-8 w-8 rounded-lg bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+        </div>
+        <div>
+          <span class="font-bold text-slate-200">Drag & Drop any parking photo here</span>
+          <span class="text-slate-400 ml-1.5">or choose from sample fixtures. The vision pipeline will ingest, warp, detect, and analyze occupancy automatically.</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 font-mono text-[11px]">
+        <span class="text-slate-400">Current Ingested Source:</span>
+        <span id="currentSourceBadge" class="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">
+          Synthesized Oblique Scene
+        </span>
+      </div>
+    </div>
+  </div>
+
   <!-- MAIN CONTAINER -->
   <main class="max-w-7xl mx-auto w-full p-4 flex-1 flex flex-col gap-5">
     
@@ -109,44 +148,36 @@
     <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-2.5 backdrop-blur shadow-sm">
       <div class="flex items-center justify-between gap-2 overflow-x-auto custom-scrollbar pb-1">
         <div class="flex items-center gap-1.5 text-xs font-medium" id="stepperContainer">
-          <!-- Step 1 -->
           <button data-step="1" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold shadow-sm">
             <span class="w-5 h-5 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center text-[11px] font-bold">1</span>
             <span>Raw Ingestion</span>
           </button>
-          <!-- Step 2 -->
           <button data-step="2" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
             <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">2</span>
             <span>Homography Reshaping</span>
           </button>
-          <!-- Step 3 -->
           <button data-step="3" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
             <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">3</span>
             <span>Adaptive Slot Mapping</span>
           </button>
-          <!-- Step 4 -->
           <button data-step="4" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
             <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">4</span>
             <span>Low-Weight YOLO</span>
           </button>
-          <!-- Step 5 -->
           <button data-step="5" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
             <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">5</span>
             <span>Contextual Area Analysis</span>
           </button>
-          <!-- Step 6 -->
           <button data-step="6" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
             <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">6</span>
             <span>Cognitive AI Fusion</span>
           </button>
-          <!-- Step 7 -->
           <button data-step="7" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
             <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">7</span>
             <span>Overhead Map & Event</span>
           </button>
         </div>
 
-        <!-- Navigation Next/Prev buttons -->
         <div class="flex items-center gap-1.5 shrink-0">
           <button id="prevStepBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold disabled:opacity-40 transition-colors">
             ◀ Prev
@@ -161,13 +192,13 @@
     <!-- MIDDLE DUAL-VIEWPORT SECTION -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
       
-      <!-- LEFT VIEWPORT: CAMERA PERSPECTIVE STREAM -->
+      <!-- LEFT VIEWPORT: CAMERA PERSPECTIVE STREAM / INGESTED PHOTO -->
       <div class="lg:col-span-6 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
         <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
             <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300" id="camStreamTitle">
-              Raw Perspective Stream — Oblique CCTV (cam-lot-a-01)
+              Ingested Frame / Perspective Stream (cam-lot-a-01)
             </h2>
           </div>
           <div class="flex items-center gap-2">
@@ -176,16 +207,13 @@
           </div>
         </div>
 
-        <!-- Perspective Canvas -->
         <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 aspect-[4/3] flex items-center justify-center shadow-inner">
           <canvas id="cameraCanvas" width="640" height="480" class="w-full h-full object-contain cursor-crosshair"></canvas>
           
-          <!-- Interactive overlay hints -->
           <div id="camOverlayBadge" class="absolute top-2 left-2 px-2.5 py-1 rounded bg-slate-900/80 backdrop-blur border border-slate-700 text-[11px] text-slate-300 font-mono pointer-events-none">
             Perspective: 45° Pitch • Trapezoidal Distortion
           </div>
 
-          <!-- Vehicle Position Scrub Slider -->
           <div class="absolute bottom-2 inset-x-2 bg-slate-900/90 backdrop-blur border border-slate-700/80 rounded-lg p-2 flex items-center gap-3">
             <label class="text-[11px] font-mono text-slate-300 whitespace-nowrap flex items-center gap-1.5">
               <span>🚗 Vehicle X-Position:</span>
@@ -195,7 +223,6 @@
           </div>
         </div>
 
-        <!-- Perspective Sub-metrics -->
         <div class="grid grid-cols-3 gap-2 text-xs pt-1">
           <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
             <div class="text-slate-400 text-[10px] uppercase font-mono">Foreshortening Factor</div>
@@ -228,7 +255,6 @@
           </div>
         </div>
 
-        <!-- BEV Canvas -->
         <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 aspect-[4/3] flex items-center justify-center shadow-inner">
           <canvas id="bevCanvas" width="640" height="480" class="w-full h-full object-contain cursor-pointer"></canvas>
           
@@ -246,7 +272,6 @@
           </div>
         </div>
 
-        <!-- BEV Sub-metrics -->
         <div class="grid grid-cols-3 gap-2 text-xs pt-1">
           <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
             <div class="text-slate-400 text-[10px] uppercase font-mono">Calibrated Slot Area</div>
@@ -275,10 +300,10 @@
           <div>
             <div class="flex items-center gap-2">
               <span class="w-6 h-6 rounded-lg bg-cyan-500 text-slate-950 font-black text-xs flex items-center justify-center" id="stepDetailNumber">1</span>
-              <h3 class="font-bold text-sm text-white" id="stepDetailTitle">Step 1 — Dual-Source Ingestion & Stream Resolution</h3>
+              <h3 class="font-bold text-sm text-white" id="stepDetailTitle">Step 1 — Ingestion & Frame Acquisition</h3>
             </div>
             <p class="text-xs text-slate-400 mt-0.5" id="stepDetailDesc">
-              Ingests raw RTSP frames from campus CCTV vs. optimized overhead sensor mounts.
+              Ingests raw photo or camera RTSP packet into calibrated memory buffer.
             </p>
           </div>
           <span class="text-xs font-mono px-2.5 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700" id="stepModuleTag">
@@ -286,17 +311,12 @@
           </span>
         </div>
 
-        <!-- Dynamic Step Content Body -->
-        <div id="stepDynamicContent" class="space-y-4">
-          <!-- Populated by JavaScript according to current active step -->
-        </div>
-
+        <div id="stepDynamicContent" class="space-y-4"></div>
       </div>
 
       <!-- FINAL OVERHEAD CAMPUS PARKING MAP & REAL-TIME EVENT CARD -->
       <div class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-lg">
         
-        <!-- Header -->
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
           <div class="flex items-center gap-2">
             <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,7 +329,6 @@
           </span>
         </div>
 
-        <!-- Overhead Canvas Map -->
         <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 aspect-[16/10] flex items-center justify-center shadow-inner">
           <canvas id="overheadMapCanvas" width="480" height="300" class="w-full h-full object-contain cursor-pointer"></canvas>
           
@@ -321,7 +340,6 @@
           </div>
         </div>
 
-        <!-- Real-Time Slot Inspector Readout -->
         <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-slate-400 font-medium">Inspected Slot:</span>
@@ -345,13 +363,12 @@
           </div>
           <div class="flex items-center justify-between pt-1 border-t border-slate-800">
             <span class="text-slate-400 font-medium">Final Call Decision:</span>
-            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-rose-950 text-rose-300 border border-rose-800" id="inspectorFinalBadge">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono border" id="inspectorFinalBadge">
               OCCUPIED
             </span>
           </div>
         </div>
 
-        <!-- SENTRY Event Payload Preview -->
         <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 text-xs flex flex-col gap-1.5">
           <div class="flex items-center justify-between text-[10px] uppercase font-mono text-slate-400">
             <span>Dispatched Schema (CANDIDATE-2026-10-30.2)</span>
@@ -377,12 +394,10 @@
 
   </main>
 
-  <!-- JAVASCRIPT PIPELINE LOGIC -->
   <script>
-    // Global State
     const state = {
       activeStep: 1,
-      cameraMode: 'cctv', // 'cctv' or 'optimized'
+      cameraMode: 'cctv',
       scenario: 'normal',
       selectedSlotIndex: 0,
       carX: 180,
@@ -390,68 +405,28 @@
       autoplayInterval: null,
       showGrid: true,
       showFootprint: true,
-      // 1-minute sliding confidence buffer (60 frames)
       confidenceHistory: Array.from({length: 60}, () => 0.92 + Math.random() * 0.05),
       
-      // Slot configuration for Lot A (3 visible bays)
+      // Loaded Photo Image object (if custom image ingested)
+      loadedImage: null,
+      loadedImageName: 'Synthesized Oblique Scene',
+
       slots: [
-        {
-          id: 'A-C01',
-          uuid: '30000000-0000-4000-8000-000000000001',
-          lot: 'A',
-          compat: 'car_only',
-          bevRect: { x: 50, y: 70, w: 100, h: 200 },
-          areaM2: 12.5,
-          totalPx: 20000
-        },
-        {
-          id: 'A-C02',
-          uuid: '30000000-0000-4000-8000-000000000002',
-          lot: 'A',
-          compat: 'car_only',
-          bevRect: { x: 170, y: 70, w: 100, h: 200 },
-          areaM2: 12.5,
-          totalPx: 20000
-        },
-        {
-          id: 'A-C03',
-          uuid: '30000000-0000-4000-8000-000000000003',
-          lot: 'A',
-          compat: 'car_only',
-          bevRect: { x: 290, y: 70, w: 100, h: 200 },
-          areaM2: 12.5,
-          totalPx: 20000
-        },
-        {
-          id: 'A-M01',
-          uuid: '30000000-0000-4000-8000-000000000004',
-          lot: 'A',
-          compat: 'motorcycle_only',
-          bevRect: { x: 410, y: 70, w: 50, h: 120 },
-          areaM2: 3.0,
-          totalPx: 6000
-        },
-        {
-          id: 'A-M02',
-          uuid: '30000000-0000-4000-8000-000000000005',
-          lot: 'A',
-          compat: 'motorcycle_only',
-          bevRect: { x: 470, y: 70, w: 50, h: 120 },
-          areaM2: 3.0,
-          totalPx: 6000
-        }
+        { id: 'A-C01', uuid: '30000000-0000-4000-8000-000000000001', lot: 'A', compat: 'car_only', bevRect: { x: 50, y: 70, w: 100, h: 200 }, areaM2: 12.5, totalPx: 20000 },
+        { id: 'A-C02', uuid: '30000000-0000-4000-8000-000000000002', lot: 'A', compat: 'car_only', bevRect: { x: 170, y: 70, w: 100, h: 200 }, areaM2: 12.5, totalPx: 20000 },
+        { id: 'A-C03', uuid: '30000000-0000-4000-8000-000000000003', lot: 'A', compat: 'car_only', bevRect: { x: 290, y: 70, w: 100, h: 200 }, areaM2: 12.5, totalPx: 20000 },
+        { id: 'A-M01', uuid: '30000000-0000-4000-8000-000000000004', lot: 'A', compat: 'motorcycle_only', bevRect: { x: 410, y: 70, w: 50, h: 120 }, areaM2: 3.0, totalPx: 6000 },
+        { id: 'A-M02', uuid: '30000000-0000-4000-8000-000000000005', lot: 'A', compat: 'motorcycle_only', bevRect: { x: 470, y: 70, w: 50, h: 120 }, areaM2: 3.0, totalPx: 6000 }
       ]
     };
 
-    // Homography Points & Transformation
     function getHomographyPoints() {
       if (state.cameraMode === 'cctv') {
         return {
-          src: [[80, 180], [560, 150], [620, 460], [20, 460]], // perspective trapezoid
+          src: [[80, 180], [560, 150], [620, 460], [20, 460]],
           dst: [[60, 60], [580, 60], [580, 420], [60, 420]]
         };
       } else {
-        // Optimized steep angle (nearly orthographic)
         return {
           src: [[60, 70], [580, 70], [590, 430], [50, 430]],
           dst: [[60, 60], [580, 60], [580, 420], [60, 420]]
@@ -459,60 +434,16 @@
       }
     }
 
-    // Pipeline Steps definition
     const stepMetadata = [
-      {
-        step: 1,
-        title: "Step 1 — Dual-Source Ingestion & Stream Calibration",
-        desc: "Ingests raw frame packets from oblique CCTV (45° foreshortening) or optimized high-angle mounts (80°).",
-        module: "src/parking_occupancy/capture.py",
-        render: renderStep1
-      },
-      {
-        step: 2,
-        title: "Step 2 — Geometry & Homography Warping (H Matrix)",
-        desc: "Maps perspective 4-point quadrilateral into an orthographic Bird's-Eye View (BEV) ground plane.",
-        module: "src/parking_occupancy/geometry.py",
-        render: renderStep2
-      },
-      {
-        step: 3,
-        title: "Step 3 — Adaptive Slot Mapping & Drift Compensation",
-        desc: "Detects fiducial anchor drift (ΔH) to realign stalls without full recalibration, and partitions unlined concrete bays.",
-        module: "docs/02B_ADAPTIVE_SLOT_MAPPING.md",
-        render: renderStep3
-      },
-      {
-        step: 4,
-        title: "Step 4 — Low-Weight YOLO Object Proposals",
-        desc: "Detects candidate vehicles with low confidence floor (≥0.30) to avoid false negatives. Never decides final occupancy alone.",
-        module: "src/parking_occupancy/inference.py",
-        render: renderStep4
-      },
-      {
-        step: 5,
-        title: "Step 5 — Contextual Intelligence & Area Analysis",
-        desc: "Calculates vehicle consumed footprint area (ρ), remaining usable space (A_rem), and alerts on neighbor spillover.",
-        module: "docs/04_CONTEXTUAL_AWARENESS.md",
-        render: renderStep5
-      },
-      {
-        step: 6,
-        title: "Step 6 — Cognitive AI Fusion & 1-Minute Mean Buffer",
-        desc: "Fuses slot area, candidate overlap, 95% Confidence Interval, and 60-second temporal sliding window mean (p̄₆₀ₛ).",
-        module: "docs/05_COGNITIVE_AI_FUSION_MODEL.md",
-        render: renderStep6
-      },
-      {
-        step: 7,
-        title: "Step 7 — Final Map Representation & SENTRY Event Schema",
-        desc: "Generates real-time overhead campus BEV map state and dispatches CANDIDATE-2026-10-30.2 JSON event.",
-        module: "src/parking_occupancy/events.py",
-        render: renderStep7
-      }
+      { step: 1, title: "Step 1 — Ingestion & Frame Acquisition", desc: "Acquires raw photo or RTSP frame, validating reference resolution and color profile.", module: "src/parking_occupancy/capture.py", render: renderStep1 },
+      { step: 2, title: "Step 2 — Geometry & Homography Warping (H Matrix)", desc: "Maps perspective quadrilateral into rectified planar Bird's-Eye View (BEV).", module: "src/parking_occupancy/geometry.py", render: renderStep2 },
+      { step: 3, title: "Step 3 — Adaptive Slot Mapping & Drift Compensation", desc: "Measures anchor drift (ΔH) to adjust stalls dynamically and partitions curb spaces.", module: "docs/02B_ADAPTIVE_SLOT_MAPPING.md", render: renderStep3 },
+      { step: 4, title: "Step 4 — Low-Weight YOLO Object Proposals", desc: "Generates candidate vehicle proposals with low confidence floor (≥0.30) and ground contact patches.", module: "src/parking_occupancy/inference.py", render: renderStep4 },
+      { step: 5, title: "Step 5 — Contextual Intelligence & Area Analysis", desc: "Calculates vehicle consumed footprint area (ρ), remaining free space (A_rem), and checks neighbor spillover.", module: "docs/04_CONTEXTUAL_AWARENESS.md", render: renderStep5 },
+      { step: 6, title: "Step 6 — Cognitive AI Fusion & 1-Minute Mean Buffer", desc: "Synthesizes slot data, confidence interval [ci_low, ci_high], and 60-second sliding mean (p̄₆₀ₛ).", module: "docs/05_COGNITIVE_AI_FUSION_MODEL.md", render: renderStep6 },
+      { step: 7, title: "Step 7 — Final Map Representation & SENTRY Event Schema", desc: "Updates campus overhead BEV map and emits CANDIDATE-2026-10-30.2 JSON event.", module: "src/parking_occupancy/events.py", render: renderStep7 }
     ];
 
-    // Compute active dynamic slot metrics
     function computeCurrentSlotMetrics(slotIdx) {
       const slot = state.slots[slotIdx];
       const carW = 90;
@@ -520,7 +451,6 @@
       const carX = state.carX;
       const carY = 90;
 
-      // Calculate intersection rectangle with slot.bevRect
       const ix1 = Math.max(slot.bevRect.x, carX);
       const iy1 = Math.max(slot.bevRect.y, carY);
       const ix2 = Math.min(slot.bevRect.x + slot.bevRect.w, carX + carW);
@@ -534,19 +464,9 @@
       const consumedRatio = Math.min(1.0, intersectionArea / (slot.bevRect.w * slot.bevRect.h));
       const remainingRatio = Math.max(0.0, 1.0 - consumedRatio);
 
-      // Spillover check: is there another car partially in this slot, or is this car spilling into next?
-      let isSpillover = false;
-      if (consumedRatio > 0.15 && consumedRatio < 0.60) {
-        isSpillover = true;
-      }
+      let isSpillover = (consumedRatio > 0.15 && consumedRatio < 0.60);
+      let isOccluded = (state.cameraMode === 'cctv' && state.scenario === 'occlusion' && slotIdx === 2);
 
-      // Occlusion check in CCTV mode
-      let isOccluded = false;
-      if (state.cameraMode === 'cctv' && state.scenario === 'occlusion' && slotIdx === 2) {
-        isOccluded = true;
-      }
-
-      // Confidence Interval & 1-min mean
       let instantConfidence = 0.95;
       let stateName = 'available';
 
@@ -564,9 +484,8 @@
         instantConfidence = 0.94 - consumedRatio * 0.2;
       }
 
-      // Compute sliding window mean
       const mean = state.confidenceHistory.reduce((a, b) => a + b, 0) / state.confidenceHistory.length;
-      const se = 0.02; // standard error
+      const se = 0.02;
       const ciLow = Math.max(0.0, instantConfidence - 1.96 * se).toFixed(2);
       const ciHigh = Math.min(1.0, instantConfidence + 1.96 * se).toFixed(2);
 
@@ -583,43 +502,37 @@
       };
     }
 
-    // Step Rendering Functions
     function renderStep1() {
       const isCctv = state.cameraMode === 'cctv';
+      const hasCustomImg = !!state.loadedImage;
       return `
         <div class="grid grid-cols-2 gap-4">
           <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
             <div class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full ${isCctv ? 'bg-cyan-400' : 'bg-slate-600'}"></span>
-              Stream Configuration: Oblique CCTV
+              <span class="w-2 h-2 rounded-full ${hasCustomImg ? 'bg-emerald-400' : 'bg-cyan-400'}"></span>
+              Active Photo / Stream Ingestion
             </div>
             <ul class="text-xs text-slate-300 space-y-1 font-mono">
-              <li>• Mount Pitch: <span class="text-cyan-300">45° Oblique Angle</span></li>
-              <li>• Resolution: <span class="text-slate-100">1280 x 960 (4:3 native)</span></li>
-              <li>• Frame Rate: <span class="text-slate-100">25.0 FPS</span></li>
-              <li>• Optical Distortion: <span class="text-amber-400">High perspective compression</span></li>
-              <li>• Vanishing Point: <span class="text-slate-100">(320px, -180px)</span></li>
+              <li>• Ingestion Source: <span class="text-cyan-300">${state.loadedImageName}</span></li>
+              <li>• Resolution: <span class="text-slate-100">${hasCustomImg ? (state.loadedImage.width + 'x' + state.loadedImage.height) : '1280 x 960'}</span></li>
+              <li>• Ingestion Mode: <span class="text-slate-100">${hasCustomImg ? 'Static Still Photo' : 'Continuous Frame'}</span></li>
+              <li>• Optical Distortion: <span class="${isCctv ? 'text-amber-400' : 'text-emerald-400'}">${isCctv ? 'Oblique perspective' : 'Near-orthographic'}</span></li>
             </ul>
           </div>
-
           <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
             <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full ${!isCctv ? 'bg-indigo-400' : 'bg-slate-600'}"></span>
-              Stream Configuration: Optimized High Angle
+              <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+              CLI Ingestion Equivalence
             </div>
-            <ul class="text-xs text-slate-300 space-y-1 font-mono">
-              <li>• Mount Pitch: <span class="text-indigo-300">80° Steep Angle</span></li>
-              <li>• Resolution: <span class="text-slate-100">1280 x 960</span></li>
-              <li>• Frame Rate: <span class="text-slate-100">30.0 FPS</span></li>
-              <li>• Optical Distortion: <span class="text-emerald-400">Minimal foreshortening</span></li>
-              <li>• Occlusion Profile: <span class="text-emerald-400">Zero inter-vehicle shadow</span></li>
-            </ul>
+            <p class="text-[11px] text-slate-300 font-mono leading-relaxed">
+              In production, photos are processed via the CLI still mode:
+              <br><code class="text-cyan-300">python -m parking_occupancy --config configs/cameras/example.yaml --still <path_to_photo></code>
+            </p>
           </div>
         </div>
-
         <div class="bg-cyan-950/30 border border-cyan-800/40 rounded-xl p-3 text-xs text-cyan-200">
-          <strong class="font-semibold text-cyan-100">Architecture Invariant:</strong>
-          Both streams use identical downstream homography matrices and polygon schemas (`configs/polygons/example.json`). Toggle between modes in the header bar to see dynamic geometry adaptation.
+          <strong class="font-semibold text-cyan-100">Photo Ingestion Engine:</strong>
+          Upload any parking photo or pick a campus camera snapshot from the dropdown above. The pipeline loads the frame, projects the geometry, and computes occupancy state for all stalls.
         </div>
       `;
     }
@@ -636,7 +549,6 @@
               <div>0.0001</div><div>0.0002</div><div>1.0000</div>
             </div>
           </div>
-
           <div class="grid grid-cols-2 gap-3 text-xs">
             <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 font-mono">
               <div class="text-slate-400 text-[10px] uppercase">Source Quad (Perspective Image)</div>
@@ -647,7 +559,6 @@
                 <div>P3: [${pts.src[3].join(', ')}]</div>
               </div>
             </div>
-
             <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 font-mono">
               <div class="text-slate-400 text-[10px] uppercase">Destination Quad (BEV Plane)</div>
               <div class="text-cyan-300 mt-1 space-y-0.5">
@@ -658,9 +569,8 @@
               </div>
             </div>
           </div>
-
           <p class="text-xs text-slate-400">
-            Homography removes perspective convergence: lane boundaries that converge to the horizon in the camera image become parallel in the BEV canvas (right panel).
+            The homography matrix transforms perspective stalls into metric top-down coordinates. Notice how trapezoidal stalls in the camera image become rectangular stalls in the BEV canvas.
           </p>
         </div>
       `;
@@ -679,35 +589,23 @@
             <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2">
               <div class="text-slate-400 uppercase font-mono text-[10px]">Fiducial Anchor Micro-Drift (ΔH)</div>
               <div class="flex items-baseline gap-2">
-                <span class="text-xl font-bold font-mono ${isOk ? 'text-emerald-400' : 'text-rose-400'}">
-                  ${driftMag} px
-                </span>
+                <span class="text-xl font-bold font-mono ${isOk ? 'text-emerald-400' : 'text-rose-400'}">${driftMag} px</span>
                 <span class="text-[11px] font-mono text-slate-400">(Threshold: τ = 5.0 px)</span>
               </div>
-              <div class="text-slate-300 text-[11px]">
-                Vector: <code class="text-cyan-300 font-mono">[dx: ${dx}px, dy: ${dy}px]</code>
-              </div>
+              <div class="text-slate-300 text-[11px]">Vector: <code class="text-cyan-300 font-mono">[dx: ${dx}px, dy: ${dy}px]</code></div>
               <div class="text-[11px] ${isOk ? 'text-emerald-300' : 'text-rose-300'}">
-                ${isOk ? '✔ Compensation applied to polygon bounds without recalibration' : '⚠ Drift exceeded threshold! Stalls marked UNKNOWN'}
+                ${isOk ? '✔ Micro-drift compensated automatically' : '⚠ Drift exceeded threshold! Stalls marked UNKNOWN'}
               </div>
             </div>
-
             <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2">
               <div class="text-slate-400 uppercase font-mono text-[10px]">Unlined Concrete Bay Partitioning</div>
-              <div class="text-slate-300 text-[11px]">
-                Mode: <span class="font-bold text-cyan-300 font-mono">adaptive_curb</span>
-              </div>
-              <div class="text-slate-300 text-[11px]">
-                Base Curb Width: <span class="font-mono text-slate-100">7.50 m (3 Stalls @ 2.50m)</span>
-              </div>
-              <div class="text-slate-300 text-[11px]">
-                Effective Stall Polygons: <span class="font-mono text-emerald-400">P_eff = P_base ⊕ ΔH</span>
-              </div>
+              <div class="text-slate-300 text-[11px]">Mode: <span class="font-bold text-cyan-300 font-mono">adaptive_curb</span></div>
+              <div class="text-slate-300 text-[11px]">Base Curb Width: <span class="font-mono text-slate-100">7.50 m (3 Stalls @ 2.50m)</span></div>
+              <div class="text-slate-300 text-[11px]">Effective Stall Polygons: <span class="font-mono text-emerald-400">P_eff = P_base ⊕ ΔH</span></div>
             </div>
           </div>
-
           <div class="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800 text-[11px] text-slate-400">
-            <strong>Adaptive Mapping Insight:</strong> Thermal expansion, wind sway, or camera mount vibration do not break slot assignment. The tracker measures ground-fiducial landmarks every frame and dynamically offsets slot coordinates.
+            <strong>Adaptive Mapping Insight:</strong> Even if the camera vibrates or thermal expansion alters the mount slightly, SENTRY offsets the stall polygons automatically.
           </div>
         </div>
       `;
@@ -721,11 +619,8 @@
               <div class="font-bold text-slate-200">Supporting YOLO Detector Config</div>
               <div class="text-slate-400 text-[11px]">Confidence Floor: <span class="font-mono text-amber-400">τ = 0.30</span> (low-weight)</div>
             </div>
-            <span class="px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800 text-[10px] font-mono">
-              LOW-CONFIDENCE SUPPORT
-            </span>
+            <span class="px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800 text-[10px] font-mono">LOW-CONFIDENCE SUPPORT</span>
           </div>
-
           <div class="grid grid-cols-2 gap-3">
             <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-[11px] space-y-1 font-mono">
               <div class="text-slate-400 text-[10px] uppercase">Detected Proposal</div>
@@ -733,7 +628,6 @@
               <div>Raw Confidence: <span class="text-amber-400 font-bold">0.54</span></div>
               <div>BBox: <span class="text-slate-300">[120, 210, 240, 390]</span></div>
             </div>
-
             <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-[11px] space-y-1 font-mono">
               <div class="text-slate-400 text-[10px] uppercase">Footprint Ground Projection</div>
               <div>Contact Patch: <span class="text-indigo-300 font-bold">Bottom 20%</span></div>
@@ -741,9 +635,8 @@
               <div>BEV Contact Box: <span class="text-emerald-300 font-bold">Projected to Z=0</span></div>
             </div>
           </div>
-
           <p class="text-slate-400 text-[11px]">
-            <strong>Why low confidence?</strong> Object detection on oblique cameras suffers from partial car clipping and glare. SENTRY uses YOLO solely as a candidate generator; geometric occupancy verification is delegated to the Homography & Contextual Area stage.
+            <strong>Why low confidence?</strong> Object detection on camera feeds suffers from partial vehicle clipping. SENTRY uses YOLO solely as a candidate generator; geometric occupancy verification is delegated to Contextual Area Analysis.
           </p>
         </div>
       `;
@@ -759,7 +652,6 @@
               <div class="font-mono text-cyan-300 font-bold text-sm mt-0.5">${m.slot.areaM2} m²</div>
               <div class="text-[10px] text-slate-500 font-mono">(${m.slot.totalPx} px²)</div>
             </div>
-
             <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
               <div class="text-slate-400 text-[10px] uppercase font-mono">Consumed Area (ρ)</div>
               <div class="font-mono ${m.consumedRatio > 0.4 ? 'text-rose-400' : 'text-emerald-400'} font-bold text-sm mt-0.5">
@@ -767,7 +659,6 @@
               </div>
               <div class="text-[10px] text-slate-500 font-mono">Vehicle footprint</div>
             </div>
-
             <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
               <div class="text-slate-400 text-[10px] uppercase font-mono">Remaining Usable</div>
               <div class="font-mono ${m.remainingRatio < 0.6 ? 'text-amber-400' : 'text-emerald-400'} font-bold text-sm mt-0.5">
@@ -776,8 +667,6 @@
               <div class="text-[10px] text-slate-500 font-mono">Free parking space</div>
             </div>
           </div>
-
-          <!-- Spillover & Occlusion Diagnostic Bar -->
           <div class="p-3 rounded-xl border ${m.isSpillover ? 'bg-orange-950/40 border-orange-700/60 text-orange-200' : m.isOccluded ? 'bg-amber-950/40 border-amber-700/60 text-amber-200' : 'bg-slate-950/60 border-slate-800 text-slate-300'} text-xs">
             <div class="font-bold flex items-center gap-1.5">
               ${m.isSpillover ? '⚠️ Neighbor Spillover Encroachment Detected' : m.isOccluded ? '👁️ Line-of-Sight CCTV Occlusion Detected' : '✔ Normal Contextual Profile'}
@@ -799,8 +688,6 @@
               <span class="text-slate-400 font-mono uppercase text-[10px]">1-Minute Sliding Mean Buffer (60 Frames)</span>
               <span class="text-cyan-400 font-mono font-bold">p̄₆₀ₛ = ${m.mean}</span>
             </div>
-            
-            <!-- Sliding window sparkline graph -->
             <div class="h-10 bg-slate-900 rounded-lg p-1 flex items-end gap-1 border border-slate-800/80">
               ${state.confidenceHistory.map(v => `
                 <div class="flex-1 bg-cyan-500/80 rounded-t hover:bg-cyan-400 transition-all" style="height: ${Math.round(v * 100)}%" title="${v.toFixed(3)}"></div>
@@ -812,14 +699,12 @@
               <span>Now (t=0)</span>
             </div>
           </div>
-
           <div class="grid grid-cols-2 gap-3 font-mono text-xs">
             <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
               <div class="text-slate-400 text-[10px] uppercase">95% Confidence Interval</div>
               <div class="text-indigo-300 font-bold text-sm mt-0.5">${m.ci}</div>
               <div class="text-[10px] text-slate-500">±1.96 · SE margin</div>
             </div>
-
             <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
               <div class="text-slate-400 text-[10px] uppercase">Final Call Gate</div>
               <div class="text-sm font-bold mt-0.5 ${m.finalCall === 'occupied' ? 'text-rose-400' : m.finalCall === 'available' ? 'text-emerald-400' : 'text-amber-400'}">
@@ -857,7 +742,6 @@
               <span class="font-mono uppercase font-bold">${eventJson.new_state}</span> with mean confidence <strong class="text-white">${m.mean}</strong>.
             </p>
           </div>
-
           <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 font-mono text-[10px] space-y-1 text-slate-300">
             <div class="text-slate-400 uppercase font-bold text-[9px] mb-1">Contract Validation Checklist:</div>
             <div class="text-emerald-400">✔ schema_version === "2026-10-30.2"</div>
@@ -869,7 +753,6 @@
       `;
     }
 
-    // Canvas Rendering 1: Raw Perspective Camera View
     function drawCameraView() {
       const canvas = document.getElementById('cameraCanvas');
       const ctx = canvas.getContext('2d');
@@ -879,28 +762,32 @@
 
       ctx.clearRect(0, 0, w, h);
 
-      // Background asphalt / lot
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-      bgGrad.addColorStop(0, '#1e293b');
-      bgGrad.addColorStop(1, '#0f172a');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, w, h);
+      // If custom or sample photo is ingested, render the actual image!
+      if (state.loadedImage) {
+        ctx.drawImage(state.loadedImage, 0, 0, w, h);
+      } else {
+        // Synthesized asphalt backdrop
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+        bgGrad.addColorStop(0, '#1e293b');
+        bgGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, w, h);
 
-      // Horizon line
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(0, isCctv ? 120 : 50);
-      ctx.lineTo(w, isCctv ? 120 : 50);
-      ctx.stroke();
-      ctx.setLineDash([]);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, isCctv ? 120 : 50);
+        ctx.lineTo(w, isCctv ? 120 : 50);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       // Draw Calibrated ROI Quadrilateral
       const pts = getHomographyPoints().src;
-      ctx.strokeStyle = '#06b6d4'; // cyan
+      ctx.strokeStyle = '#06b6d4';
       ctx.lineWidth = 2;
-      ctx.fillStyle = 'rgba(6, 182, 212, 0.08)';
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.12)';
       ctx.beginPath();
       ctx.moveTo(pts[0][0], pts[0][1]);
       ctx.lineTo(pts[1][0], pts[1][1]);
@@ -910,7 +797,6 @@
       ctx.fill();
       ctx.stroke();
 
-      // Draw Quad Corner Anchors
       pts.forEach((p, i) => {
         ctx.fillStyle = '#06b6d4';
         ctx.beginPath();
@@ -922,7 +808,7 @@
       });
 
       // Perspective parking stall lines
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
       ctx.lineWidth = 2;
       for (let i = 0; i <= 3; i++) {
         const t = i / 3;
@@ -936,68 +822,60 @@
         ctx.stroke();
       }
 
-      // Draw car representation in perspective
-      const carX = state.carX;
-      // Perspective scale factor based on Y
-      const carCamY = isCctv ? 240 : 180;
-      const carCamW = isCctv ? 140 : 110;
-      const carCamH = isCctv ? 90 : 140;
+      // If synthetic mode (or vehicle scrubber active), draw vehicle model
+      if (!state.loadedImage || state.carX < 600) {
+        const carX = state.carX;
+        const carCamY = isCctv ? 240 : 180;
+        const carCamW = isCctv ? 140 : 110;
+        const carCamH = isCctv ? 90 : 140;
 
-      // Car shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.beginPath();
-      ctx.ellipse(carX + carCamW/2, carCamY + carCamH, carCamW/2, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Car Body
-      const carGrad = ctx.createLinearGradient(carX, carCamY, carX, carCamY + carCamH);
-      carGrad.addColorStop(0, '#38bdf8');
-      carGrad.addColorStop(1, '#0284c7');
-      ctx.fillStyle = carGrad;
-      ctx.beginPath();
-      ctx.roundRect(carX, carCamY, carCamW, carCamH, 8);
-      ctx.fill();
-      ctx.strokeStyle = '#0369a1';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Car Windshield
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
-      ctx.beginPath();
-      ctx.roundRect(carX + 15, carCamY + 15, carCamW - 30, carCamH * 0.35, 4);
-      ctx.fill();
-
-      // YOLO Proposal Bounding Box (Step 4 overlay)
-      if (state.activeStep >= 4) {
-        ctx.strokeStyle = '#f59e0b'; // amber
-        ctx.lineWidth = 2;
-        ctx.strokeRect(carX - 5, carCamY - 5, carCamW + 10, carCamH + 10);
-        
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(carX - 5, carCamY - 22, 100, 17);
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 9px JetBrains Mono';
-        ctx.fillText('car: 0.54 (low)', carX - 2, carCamY - 10);
-
-        // Ground tire contact patch (bottom 20%)
-        ctx.fillStyle = 'rgba(99, 102, 241, 0.4)';
-        ctx.fillRect(carX - 5, carCamY + carCamH - carCamH*0.2, carCamW + 10, carCamH*0.2 + 5);
-      }
-
-      // Occlusion Ray Tracing (Step 5 overlay if occlusion scenario)
-      if (state.scenario === 'occlusion' && isCctv) {
-        ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([3, 3]);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         ctx.beginPath();
-        ctx.moveTo(320, 0); // camera optical origin
-        ctx.lineTo(carX + carCamW, carCamY + carCamH);
+        ctx.ellipse(carX + carCamW/2, carCamY + carCamH, carCamW/2, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const carGrad = ctx.createLinearGradient(carX, carCamY, carX, carCamY + carCamH);
+        carGrad.addColorStop(0, '#38bdf8');
+        carGrad.addColorStop(1, '#0284c7');
+        ctx.fillStyle = carGrad;
+        ctx.beginPath();
+        ctx.roundRect(carX, carCamY, carCamW, carCamH, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#0369a1';
+        ctx.lineWidth = 2;
         ctx.stroke();
-        ctx.setLineDash([]);
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+        ctx.beginPath();
+        ctx.roundRect(carX + 15, carCamY + 15, carCamW - 30, carCamH * 0.35, 4);
+        ctx.fill();
+
+        if (state.activeStep >= 4) {
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(carX - 5, carCamY - 5, carCamW + 10, carCamH + 10);
+          ctx.fillStyle = '#f59e0b';
+          ctx.fillRect(carX - 5, carCamY - 22, 100, 17);
+          ctx.fillStyle = '#000000';
+          ctx.font = 'bold 9px JetBrains Mono';
+          ctx.fillText('car: 0.54 (low)', carX - 2, carCamY - 10);
+          ctx.fillStyle = 'rgba(99, 102, 241, 0.4)';
+          ctx.fillRect(carX - 5, carCamY + carCamH - carCamH*0.2, carCamW + 10, carCamH*0.2 + 5);
+        }
+
+        if (state.scenario === 'occlusion' && isCctv) {
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(320, 0);
+          ctx.lineTo(carX + carCamW, carCamY + carCamH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
     }
 
-    // Canvas Rendering 2: Homography Warped Bird's-Eye View (BEV)
     function drawBevView() {
       const canvas = document.getElementById('bevCanvas');
       const ctx = canvas.getContext('2d');
@@ -1005,30 +883,21 @@
       const h = canvas.height;
 
       ctx.clearRect(0, 0, w, h);
-
-      // BEV dark asphalt ground
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, w, h);
 
-      // Grid overlay
       if (state.showGrid) {
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 1;
         for (let x = 0; x < w; x += 40) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, h);
-          ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
         }
         for (let y = 0; y < h; y += 40) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(w, y);
-          ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
         }
       }
 
-      // Draw Parking Bays (Stalls)
+      // Draw stalls
       state.slots.forEach((slot, idx) => {
         const isSelected = idx === state.selectedSlotIndex;
         const metrics = computeCurrentSlotMetrics(idx);
@@ -1050,14 +919,9 @@
           fillColor = 'rgba(16, 185, 129, 0.12)';
         }
 
-        if (isSelected) {
-          strokeColor = '#06b6d4';
-          ctx.lineWidth = 3;
-        } else {
-          ctx.lineWidth = 2;
-        }
+        ctx.lineWidth = isSelected ? 3 : 2;
+        if (isSelected) strokeColor = '#06b6d4';
 
-        // Adaptive drift shift
         const isDrift = state.scenario === 'drift';
         const dx = isDrift ? 6 : 0;
         const dy = isDrift ? -4 : 0;
@@ -1069,7 +933,6 @@
         ctx.fill();
         ctx.stroke();
 
-        // Base polygon outline (dashed) when showing adaptive drift
         if (state.activeStep >= 3 && isDrift) {
           ctx.setLineDash([3, 3]);
           ctx.strokeStyle = '#64748b';
@@ -1077,19 +940,16 @@
           ctx.setLineDash([]);
         }
 
-        // Slot Label
         ctx.fillStyle = isSelected ? '#38bdf8' : '#94a3b8';
         ctx.font = 'bold 11px JetBrains Mono';
         ctx.fillText(slot.id, slot.bevRect.x + dx + 10, slot.bevRect.y + dy + 22);
 
-        // Occupancy state pill
         ctx.fillStyle = strokeColor;
         ctx.font = '9px JetBrains Mono';
         ctx.fillText(metrics.finalCall.toUpperCase(), slot.bevRect.x + dx + 10, slot.bevRect.y + dy + slot.bevRect.h - 12);
       });
 
-      // Warped Car Footprint on BEV
-      if (state.showFootprint) {
+      if (state.showFootprint && state.carX < 600) {
         const carW = 90;
         const carH = 160;
         const carX = state.carX;
@@ -1103,14 +963,12 @@
         ctx.fill();
         ctx.stroke();
 
-        // Car Wheels on ground
         ctx.fillStyle = '#020617';
         ctx.fillRect(carX - 3, carY + 20, 6, 24);
         ctx.fillRect(carX + carW - 3, carY + 20, 6, 24);
         ctx.fillRect(carX - 3, carY + carH - 44, 6, 24);
         ctx.fillRect(carX + carW - 3, carY + carH - 44, 6, 24);
 
-        // Heading arrow
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.moveTo(carX + carW/2, carY + 25);
@@ -1121,7 +979,6 @@
       }
     }
 
-    // Canvas Rendering 3: Final Overhead Campus Parking Lot Map
     function drawOverheadMap() {
       const canvas = document.getElementById('overheadMapCanvas');
       const ctx = canvas.getContext('2d');
@@ -1129,12 +986,9 @@
       const h = canvas.height;
 
       ctx.clearRect(0, 0, w, h);
-
-      // Campus lot tarmac
       ctx.fillStyle = '#090d16';
       ctx.fillRect(0, 0, w, h);
 
-      // Driving lane markings & road arrows
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([8, 8]);
@@ -1144,12 +998,10 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Lane direction text
       ctx.fillStyle = '#475569';
       ctx.font = '10px JetBrains Mono';
       ctx.fillText('ENTRY ➔ DRIVING AISLE (ONE WAY) ➔ EXIT', 120, 240);
 
-      // Draw all bays
       const scaleX = 0.75;
       const scaleY = 0.65;
       const offsetX = 20;
@@ -1187,7 +1039,6 @@
         ctx.fill();
         ctx.stroke();
 
-        // Slot ID & Badge
         ctx.fillStyle = isSelected ? '#ffffff' : '#e2e8f0';
         ctx.font = 'bold 9px JetBrains Mono';
         ctx.fillText(slot.id, sx + 5, sy + 15);
@@ -1198,7 +1049,6 @@
       });
     }
 
-    // UI Updates
     function updateInspector() {
       const m = computeCurrentSlotMetrics(state.selectedSlotIndex);
       
@@ -1239,7 +1089,6 @@
       document.getElementById('stepModuleTag').textContent = meta.module;
       document.getElementById('stepDynamicContent').innerHTML = meta.render();
 
-      // Update stepper buttons
       document.querySelectorAll('.step-btn').forEach(btn => {
         const step = parseInt(btn.dataset.step);
         if (step === state.activeStep) {
@@ -1263,36 +1112,139 @@
       updateStepView();
     }
 
-    // Scenario setup
+    // Ingest image file
+    function handleImageFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          state.loadedImage = img;
+          state.loadedImageName = file.name;
+          document.getElementById('currentSourceBadge').textContent = file.name;
+          document.getElementById('camResBadge').textContent = `${img.width}x${img.height}`;
+          state.carX = 180; // default active vehicle test
+          renderAll();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Load sample image by URL
+    function loadSampleImage(url, displayName, carPos) {
+      const img = new Image();
+      img.onload = () => {
+        state.loadedImage = img;
+        state.loadedImageName = displayName;
+        document.getElementById('currentSourceBadge').textContent = displayName;
+        document.getElementById('camResBadge').textContent = `${img.width}x${img.height}`;
+        state.carX = carPos !== undefined ? carPos : 180;
+        document.getElementById('carPosSlider').value = Math.min(600, state.carX);
+        document.getElementById('carPosVal').textContent = (state.carX > 600 ? 'None' : state.carX + 'px');
+        renderAll();
+      };
+      img.onerror = () => {
+        console.warn(`Could not load sample image from ${url}`);
+      };
+      img.src = url;
+    }
+
     function applyScenario(scenarioKey) {
       state.scenario = scenarioKey;
       if (scenarioKey === 'normal') {
-        state.carX = 180; // Centered in Slot 2
-      } else if (scenarioKey === 'spillover') {
-        state.carX = 235; // Straddling between Slot 2 and Slot 3
-      } else if (scenarioKey === 'occlusion') {
-        state.carX = 60; // Large vehicle in foreground
-        state.cameraMode = 'cctv';
-      } else if (scenarioKey === 'drift') {
+        state.loadedImage = null;
+        state.loadedImageName = 'Synthesized Normal Scene';
         state.carX = 180;
+        document.getElementById('currentSourceBadge').textContent = state.loadedImageName;
+      } else if (scenarioKey === 'spillover') {
+        state.loadedImage = null;
+        state.loadedImageName = 'Synthesized Spillover Scene';
+        state.carX = 235;
+        document.getElementById('currentSourceBadge').textContent = state.loadedImageName;
+      } else if (scenarioKey === 'occlusion') {
+        state.loadedImage = null;
+        state.loadedImageName = 'Synthesized CCTV Occlusion';
+        state.carX = 60;
+        state.cameraMode = 'cctv';
+        document.getElementById('currentSourceBadge').textContent = state.loadedImageName;
+      } else if (scenarioKey === 'drift') {
+        state.loadedImage = null;
+        state.loadedImageName = 'Synthesized Micro-Drift';
+        state.carX = 180;
+        document.getElementById('currentSourceBadge').textContent = state.loadedImageName;
       } else if (scenarioKey === 'empty') {
-        state.carX = 9999; // Off canvas
+        state.loadedImage = null;
+        state.loadedImageName = 'Synthesized Empty Lot';
+        state.carX = 9999;
+        document.getElementById('currentSourceBadge').textContent = state.loadedImageName;
+      } else if (scenarioKey === 'sample_cam_a') {
+        loadSampleImage('samples/cam_view_A.jpg', 'Campus Cam A (Oblique)', 180);
+        return;
+      } else if (scenarioKey === 'sample_cam_b') {
+        loadSampleImage('samples/cam_view_B.jpg', 'Campus Cam B (Frontal)', 180);
+        return;
+      } else if (scenarioKey === 'sample_cam_c') {
+        loadSampleImage('samples/cam_view_C.jpg', 'Campus Cam C (Overhead)', 180);
+        return;
+      } else if (scenarioKey === 'sample_full') {
+        loadSampleImage('samples/example_full.jpg', 'example_full.jpg', 180);
+        return;
+      } else if (scenarioKey === 'sample_partial') {
+        loadSampleImage('samples/example_partial.jpg', 'example_partial.jpg', 100);
+        return;
+      } else if (scenarioKey === 'sample_empty') {
+        loadSampleImage('samples/example_empty.jpg', 'example_empty.jpg', 9999);
+        return;
       }
+
       document.getElementById('carPosSlider').value = Math.min(600, state.carX);
       document.getElementById('carPosVal').textContent = (state.carX > 600 ? 'None' : state.carX + 'px');
       renderAll();
     }
 
-    // Event Listeners
+    // Drag and Drop Handling
+    const dropZone = document.getElementById('dropZone');
+    const photoFileInput = document.getElementById('photoFileInput');
+
+    dropZone.addEventListener('click', () => {
+      photoFileInput.click();
+    });
+
+    photoFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleImageFile(e.target.files[0]);
+      }
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drop-active');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('drop-active');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drop-active');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleImageFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    // Scenario Dropdown
     document.getElementById('scenarioSelector').addEventListener('change', (e) => {
       applyScenario(e.target.value);
     });
 
+    // Camera Mode Buttons
     document.getElementById('camCctvBtn').addEventListener('click', () => {
       state.cameraMode = 'cctv';
       document.getElementById('camCctvBtn').className = 'px-3 py-1.5 rounded-md font-medium transition-colors bg-cyan-600 text-white shadow-sm flex items-center gap-1.5';
       document.getElementById('camOptimizedBtn').className = 'px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5';
-      document.getElementById('camStreamTitle').textContent = 'Raw Perspective Stream — Oblique CCTV (cam-lot-a-01)';
+      document.getElementById('camStreamTitle').textContent = 'Ingested Frame — Oblique CCTV (cam-lot-a-01)';
       document.getElementById('camOverlayBadge').textContent = 'Perspective: 45° Pitch • Trapezoidal Distortion';
       document.getElementById('camFpsBadge').textContent = '25.0 FPS';
       renderAll();
@@ -1302,7 +1254,7 @@
       state.cameraMode = 'optimized';
       document.getElementById('camOptimizedBtn').className = 'px-3 py-1.5 rounded-md font-medium transition-colors bg-indigo-600 text-white shadow-sm flex items-center gap-1.5';
       document.getElementById('camCctvBtn').className = 'px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5';
-      document.getElementById('camStreamTitle').textContent = 'Raw Perspective Stream — Optimized Elevated Camera (cam-lot-a-02)';
+      document.getElementById('camStreamTitle').textContent = 'Ingested Frame — Optimized Elevated Camera (cam-lot-a-02)';
       document.getElementById('camOverlayBadge').textContent = 'Elevated: 80° Pitch • Near-Orthographic Perspective';
       document.getElementById('camFpsBadge').textContent = '30.0 FPS';
       renderAll();
@@ -1312,7 +1264,6 @@
       state.carX = parseInt(e.target.value);
       document.getElementById('carPosVal').textContent = state.carX + 'px';
       
-      // Push new confidence sample to sliding buffer
       const newSample = Math.max(0.4, Math.min(0.99, 0.90 + Math.random() * 0.08));
       state.confidenceHistory.shift();
       state.confidenceHistory.push(newSample);
@@ -1320,7 +1271,6 @@
       renderAll();
     });
 
-    // Stepper Button Clicks
     document.querySelectorAll('.step-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         state.activeStep = parseInt(btn.dataset.step);
@@ -1342,7 +1292,6 @@
       }
     });
 
-    // Autoplay Stepper Loop
     document.getElementById('autoplayBtn').addEventListener('click', () => {
       if (state.isAutoplay) {
         clearInterval(state.autoplayInterval);
@@ -1360,14 +1309,12 @@
       }
     });
 
-    // Slot click on Overhead Map
     document.getElementById('overheadMapCanvas').addEventListener('click', (e) => {
       const rect = e.target.getBoundingClientRect();
       const clickX = (e.clientX - rect.left) * (e.target.width / rect.width);
       const scaleX = 0.75;
       const offsetX = 20;
 
-      // Find closest slot
       state.slots.forEach((slot, idx) => {
         const sx = slot.bevRect.x * scaleX + offsetX;
         const sw = slot.bevRect.w * scaleX;
@@ -1378,7 +1325,6 @@
       });
     });
 
-    // Slot click on BEV Canvas
     document.getElementById('bevCanvas').addEventListener('click', (e) => {
       const rect = e.target.getBoundingClientRect();
       const clickX = (e.clientX - rect.left) * (e.target.width / rect.width);
@@ -1393,7 +1339,6 @@
       });
     });
 
-    // Grid / Footprint Toggles
     document.getElementById('toggleGridBtn').addEventListener('click', () => {
       state.showGrid = !state.showGrid;
       document.getElementById('toggleGridBtn').textContent = `Grid: ${state.showGrid ? 'ON' : 'OFF'}`;
@@ -1406,7 +1351,6 @@
       renderAll();
     });
 
-    // Initialize
     applyScenario('normal');
   </script>
 </body>
