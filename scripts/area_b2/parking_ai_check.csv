@@ -1,0 +1,30 @@
+slot,zone,status,detector_box,height_z,depth_pass,agreement,note
+L1,left,confirmed,1,6.9,near,both,red Hyundai Kona
+L2,left,confirmed,1,6.4,near,both,black Honda City
+L3,left,confirmed,1,24.1,far,both,dark grey sedan
+L4,left,confirmed,1,25.2,far,both,red hatchback/sedan
+L5,left,confirmed,1,26.1,far,both,grey hatchback
+L6,left,confirmed,1,24.3,far,both,black sedan
+L7,left,confirmed,1,20.1,far,both,black sedan
+L8,left,confirmed,1,14.7,far,both,black sedan
+L9,left,confirmed,1,9.4,far,both,black sedan
+L10,left,confirmed,1,4.3,far,both,red car (far end)
+L11,left,unconfirmed,,,,none,not visible in photo
+R1,right,confirmed,1,7.9,near,both,yellow hatchback
+R2,right,confirmed,1,4.4,near,both,grey sedan
+R3,right,confirmed,1,2.6,near,one,orange hatchback
+R4,right,confirmed,1,12.7,far,both,dark red SUV
+R5,right,confirmed,1,6.4,far,both,black sedan
+R6,right,confirmed,1,6.5,far,both,silver van
+R7,right,confirmed,1,7.7,far,both,dark car behind van
+R8,right,confirmed,1,5.6,far,both,dark car
+R9,right,probable,1,1.8,far,one,"dark car (stacked behind van, count uncertain)"
+R10,right,probable,1,0.6,far,one,"dark car (far end, count uncertain)"
+R11,right,unconfirmed,,,,none,not visible in photo
+M1,middle,informal,1,4.5,near,both,black sedan
+M2,middle,informal,1,4.3,near,both,red sedan
+M3,middle,informal,1,1.5,near,one,blue sedan
+M4,middle,informal,1,2.4,near,one,"silver sedan, parked crosswise"
+M5,middle,informal,1,16.4,far,both,white hatchback
+M6,middle,informal,1,9.9,far,both,dark small car
+M7,middle,informal,1,7.0,far,both,blue car (far end of column)

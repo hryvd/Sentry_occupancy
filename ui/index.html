@@ -143,10 +143,11 @@
         <!-- Scenario / Source Selector -->
         <div class="flex items-center glass-pill rounded-lg px-2 py-1 text-xs">
           <span class="text-slate-400 text-[11px] font-mono mr-1.5">View:</span>
-          <select id="scenarioSelector" class="bg-transparent text-slate-200 border-none rounded py-0.5 text-xs focus:ring-0 font-medium cursor-pointer outline-none">
+          <select id="scenarioSelector" class="bg-transparent text-slate-200 border-none rounded py-0.5 text-xs focus:ring-0 font-medium cursor-pointer outline-none max-w-[260px]">
             <optgroup label="📸 Campus Cameras (Real Lot Photos)" class="bg-slate-900 text-slate-200">
+              <option value="samples/area_b2_raw.jpg" selected>📸 Area B2 — 29 Slots (YOLOX-L + MiDaS)</option>
               <option value="samples/cam_view_A.jpg">📸 Campus View A (Oblique Lot A)</option>
-              <option value="samples/cam_view_B.jpg" selected>📸 Campus View B (Frontal Lot B)</option>
+              <option value="samples/cam_view_B.jpg">📸 Campus View B (Frontal Lot B)</option>
               <option value="samples/cam_view_C.jpg">📸 Campus View C (Overhead Lot C)</option>
             </optgroup>
             <optgroup label="🧪 Synthetic Simulation Scenarios" class="bg-slate-900 text-slate-200">
@@ -283,20 +284,33 @@
             <span id="camOverlayText">Perspective: 45° Pitch • Trapezoidal Distortion</span>
           </div>
 
-          <!-- Quick Drop Prompt on Canvas -->
-          <div class="absolute top-2.5 right-2.5 px-2 py-1 rounded-md glass-pill text-[10px] text-slate-400 font-mono pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+          <!-- Quick Drop Prompt on Canvas (non-B2) -->
+          <div id="dropPromptPill" class="absolute top-2.5 right-2.5 px-2 py-1 rounded-md glass-pill text-[10px] text-slate-400 font-mono pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity hidden">
             Drop photo to analyze
           </div>
 
+          <!-- Area B2 Perspective Layer Switcher -->
+          <div id="b2LeftLayers" class="absolute top-2.5 right-2.5 flex items-center gap-1 p-0.5 rounded-lg glass-pill">
+            <button data-b2-layer="interactive" class="b2-left-btn px-2 py-1 rounded-md text-[10px] font-mono bg-cyan-600 text-white font-semibold transition-all">
+              Interactive 29 Slots
+            </button>
+            <button data-b2-layer="check" class="b2-left-btn px-2 py-1 rounded-md text-[10px] font-mono text-slate-300 hover:text-white transition-all">
+              AI Check (Both/One)
+            </button>
+            <button data-b2-layer="heightmap" class="b2-left-btn px-2 py-1 rounded-md text-[10px] font-mono text-slate-300 hover:text-white transition-all">
+              MiDaS Heightmap
+            </button>
+          </div>
+
           <!-- Interactive Stall Navigation Bar (Capsule Carousel) -->
-          <div class="absolute bottom-2 inset-x-2 glass-pill rounded-lg px-2.5 py-1.5 flex items-center justify-between text-xs">
-            <div class="flex items-center gap-2">
-              <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Bays:</span>
-              <div id="slotPillList" class="flex items-center gap-1.5 overflow-x-auto">
+          <div class="absolute bottom-2 inset-x-2 glass-pill rounded-lg px-2.5 py-1.5 flex items-center justify-between gap-2 text-xs">
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+              <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400 shrink-0">Bays:</span>
+              <div id="slotPillList" class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-0.5 whitespace-nowrap">
                 <!-- Dynamically filled with slot capsules -->
               </div>
             </div>
-            <span class="text-[10px] font-mono text-cyan-400 hidden sm:inline" id="slotStatusReadout">6 Stalls Active</span>
+            <span class="text-[10px] font-mono text-cyan-400 shrink-0 hidden sm:inline" id="slotStatusReadout">22 Both • 5 One • 2 None</span>
           </div>
         </div>
 
@@ -345,10 +359,18 @@
           </div>
 
           <div class="absolute top-2.5 right-2.5 flex gap-1.5">
+            <div id="b2RightLayers" class="flex items-center gap-1 p-0.5 rounded-lg glass-pill">
+              <button data-b2-bev="topview" class="b2-right-btn px-2 py-0.5 rounded-md text-[10px] font-mono bg-cyan-600 text-white font-semibold transition-all">
+                Metric Top-View Warp
+              </button>
+              <button data-b2-bev="schematic" class="b2-right-btn px-2 py-0.5 rounded-md text-[10px] font-mono text-slate-300 hover:text-white transition-all">
+                29-Slot Schematic Plan
+              </button>
+            </div>
             <button id="toggleGridBtn" class="px-2 py-1 rounded-md glass-pill text-[10px] font-mono text-slate-300 hover:text-white transition-colors">
               Grid: ON
             </button>
-            <button id="toggleWarpBtn" class="px-2 py-1 rounded-md glass-pill text-[10px] font-mono text-cyan-300 hover:text-white transition-colors">
+            <button id="toggleWarpBtn" class="px-2 py-1 rounded-md glass-pill text-[10px] font-mono text-cyan-300 hover:text-white transition-colors hidden">
               Warped Plane: ON
             </button>
           </div>
@@ -424,39 +446,50 @@
         <div class="relative bg-slate-950/90 rounded-xl overflow-hidden border border-slate-800/80 aspect-[16/10] flex items-center justify-center shadow-inner">
           <canvas id="overheadMapCanvas" width="480" height="300" class="w-full h-full object-contain cursor-pointer"></canvas>
           
-          <div class="absolute bottom-2 left-2 glass-pill px-2 py-1 rounded text-[9px] text-slate-300 font-mono flex items-center gap-2">
-            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Available</span>
-            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Occupied</span>
-            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span> Spillover</span>
+          <div id="mapLegend" class="absolute bottom-2 left-2 glass-pill px-2 py-1 rounded text-[9px] text-slate-300 font-mono flex items-center gap-2">
+            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Both (22)</span>
+            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> One (5)</span>
+            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> None (2)</span>
+          </div>
+          <div id="mapSummaryBadge" class="absolute bottom-2 right-2 glass-pill px-2 py-1 rounded text-[9px] text-cyan-300 font-mono">
+            27 / 29 Seen
           </div>
         </div>
 
         <!-- Real-Time Slot Inspector Readout -->
-        <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 text-xs space-y-2">
+        <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 text-xs space-y-1.5">
           <div class="flex items-center justify-between">
             <span class="text-slate-400 font-medium">Inspected Slot:</span>
-            <span class="font-bold font-mono text-cyan-300 text-sm" id="inspectorSlotId">Slot B-01</span>
+            <span class="font-bold font-mono text-cyan-300 text-sm" id="inspectorSlotId">Slot L1 (left)</span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
             <span class="text-slate-400">Compatibility & Dimensions:</span>
-            <span class="font-mono text-slate-200" id="inspectorCompat">car_only • 2.5m × 5.0m</span>
+            <span class="font-mono text-slate-200" id="inspectorCompat">car_only • 2.4m × 5.0m</span>
+          </div>
+          <div id="inspectorDualRow" class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">YOLOX-L + MiDaS Depth:</span>
+            <span class="font-mono text-emerald-300" id="inspectorDualVal">Box: 1 • z = 6.9 (near) → BOTH</span>
+          </div>
+          <div id="inspectorNoteRow" class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">Observed Vehicle / Metric:</span>
+            <span class="font-mono text-slate-200 truncate max-w-[230px]" id="inspectorNoteVal">red Hyundai Kona (4.8m, 16.6m)</span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
             <span class="text-slate-400">Consumed Area (ρ) / Remaining:</span>
-            <span class="font-mono text-slate-200" id="inspectorAreaVals">ρ = 93.0% | Rem = 7.0%</span>
+            <span class="font-mono text-slate-200" id="inspectorAreaVals">ρ = 95.0% | Rem = 5.0%</span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
             <span class="text-slate-400">Confidence Interval (95% CI):</span>
-            <span class="font-mono text-indigo-300" id="inspectorCiVals">[0.91, 0.97]</span>
+            <span class="font-mono text-indigo-300" id="inspectorCiVals">[0.92, 0.98]</span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
             <span class="text-slate-400">1-Minute Sliding Mean (p̄₆₀ₛ):</span>
-            <span class="font-mono text-cyan-300 font-bold" id="inspectorMeanVal">0.942</span>
+            <span class="font-mono text-cyan-300 font-bold" id="inspectorMeanVal">0.946</span>
           </div>
           <div class="flex items-center justify-between pt-1 border-t border-slate-800/80">
             <span class="text-slate-400 font-medium">Final Call Decision:</span>
             <span class="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-rose-950 text-rose-300 border border-rose-800" id="inspectorFinalBadge">
-              OCCUPIED
+              OCCUPIED (CONFIRMED)
             </span>
           </div>
         </div>
@@ -493,9 +526,124 @@
   <!-- JAVASCRIPT PIPELINE & CLIENT-SIDE COGNITIVE ENGINE -->
   <script>
     // ════════════════════════════════════════════════════════════════
+    // AREA B2 DUAL-MODEL DATASET (29 SLOTS — topview_slots.py + parking_ai_check.csv)
+    // Coordinates: native photo = 2048x1536, topview warp = 1443x1182
+    // ════════════════════════════════════════════════════════════════
+    const AREA_B2_RAW_ROWS = [
+      // Left row, near -> far
+      { id: 'L1',  zone: 'left',   planStatus: 'confirmed',   anchor: [170, 890],   topview: [290.0, 995.8],  meters: [4.8, 16.6],  det: 1, z: 6.9,  pass: 'near', agreement: 'both', note: 'red Hyundai Kona' },
+      { id: 'L2',  zone: 'left',   planStatus: 'confirmed',   anchor: [345, 765],   topview: [286.5, 835.9],  meters: [4.8, 13.9],  det: 1, z: 6.4,  pass: 'near', agreement: 'both', note: 'black Honda City' },
+      { id: 'L3',  zone: 'left',   planStatus: 'confirmed',   anchor: [571, 628],   topview: [321.9, 571.7],  meters: [5.4, 9.5],   det: 1, z: 24.1, pass: 'far',  agreement: 'both', note: 'dark grey sedan' },
+      { id: 'L4',  zone: 'left',   planStatus: 'confirmed',   anchor: [680, 597],   topview: [404.3, 494.5],  meters: [6.7, 8.2],   det: 1, z: 25.2, pass: 'far',  agreement: 'both', note: 'red hatchback/sedan' },
+      { id: 'L5',  zone: 'left',   planStatus: 'confirmed',   anchor: [705, 555],   topview: [367.7, 368.5],  meters: [6.1, 6.1],   det: 1, z: 26.1, pass: 'far',  agreement: 'both', note: 'grey hatchback' },
+      { id: 'L6',  zone: 'left',   planStatus: 'confirmed',   anchor: [755, 538],   topview: [406.7, 314.1],  meters: [6.8, 5.2],   det: 1, z: 24.3, pass: 'far',  agreement: 'both', note: 'black sedan' },
+      { id: 'L7',  zone: 'left',   planStatus: 'confirmed',   anchor: [801, 520],   topview: [440.8, 251.8],  meters: [7.3, 4.2],   det: 1, z: 20.1, pass: 'far',  agreement: 'both', note: 'black sedan' },
+      { id: 'L8',  zone: 'left',   planStatus: 'confirmed',   anchor: [834, 492],   topview: [440.7, 138.6],  meters: [7.3, 2.3],   det: 1, z: 14.7, pass: 'far',  agreement: 'both', note: 'black sedan' },
+      { id: 'L9',  zone: 'left',   planStatus: 'confirmed',   anchor: [872, 472],   topview: [463.9, 50.3],   meters: [7.7, 0.8],   det: 1, z: 9.4,  pass: 'far',  agreement: 'both', note: 'black sedan' },
+      { id: 'L10', zone: 'left',   planStatus: 'confirmed',   anchor: [918, 476],   topview: [542.0, 80.2],   meters: [9.0, 1.3],   det: 1, z: 4.3,  pass: 'far',  agreement: 'both', note: 'red car (far end)' },
+      { id: 'L11', zone: 'left',   planStatus: 'unconfirmed', anchor: null,         topview: null,            meters: null,         det: 0, z: null, pass: 'far',  agreement: 'none', note: 'not visible in photo (zoomed pass found no 11th car)' },
+      // Right row, near -> far
+      { id: 'R1',  zone: 'right',  planStatus: 'confirmed',   anchor: [1780, 1040], topview: [1240.7, 1017.8], meters: [20.7, 17.0], det: 1, z: 7.9,  pass: 'near', agreement: 'both', note: 'yellow hatchback' },
+      { id: 'R2',  zone: 'right',  planStatus: 'confirmed',   anchor: [1650, 860],  topview: [1223.8, 888.6],  meters: [20.4, 14.8], det: 1, z: 4.4,  pass: 'near', agreement: 'both', note: 'grey sedan' },
+      { id: 'R3',  zone: 'right',  planStatus: 'confirmed',   anchor: [1570, 730],  topview: [1213.9, 746.7],  meters: [20.2, 12.4], det: 1, z: 2.6,  pass: 'near', agreement: 'one',  note: 'orange hatchback (detector-backed; depth z=2.6 < 4.0)' },
+      { id: 'R4',  zone: 'right',  planStatus: 'confirmed',   anchor: [1510, 660],  topview: [1194.7, 641.9],  meters: [19.9, 10.7], det: 1, z: 12.7, pass: 'far',  agreement: 'both', note: 'dark red SUV' },
+      { id: 'R5',  zone: 'right',  planStatus: 'confirmed',   anchor: [1440, 595],  topview: [1160.0, 515.4],  meters: [19.3, 8.6],  det: 1, z: 6.4,  pass: 'far',  agreement: 'both', note: 'black sedan' },
+      { id: 'R6',  zone: 'right',  planStatus: 'confirmed',   anchor: [1410, 545],  topview: [1147.5, 391.2],  meters: [19.1, 6.5],  det: 1, z: 6.5,  pass: 'far',  agreement: 'both', note: 'silver van' },
+      { id: 'R7',  zone: 'right',  planStatus: 'confirmed',   anchor: [1320, 522],  topview: [1065.3, 316.6],  meters: [17.8, 5.3],  det: 1, z: 7.7,  pass: 'far',  agreement: 'both', note: 'dark car behind van' },
+      { id: 'R8',  zone: 'right',  planStatus: 'confirmed',   anchor: [1330, 500],  topview: [1078.0, 244.8],  meters: [18.0, 4.1],  det: 1, z: 5.6,  pass: 'far',  agreement: 'both', note: 'dark car' },
+      { id: 'R9',  zone: 'right',  planStatus: 'probable',    anchor: [1345, 483],  topview: [1096.9, 184.9],  meters: [18.3, 3.1],  det: 1, z: 1.8,  pass: 'far',  agreement: 'one',  note: 'dark car (stacked behind van, count uncertain)' },
+      { id: 'R10', zone: 'right',  planStatus: 'probable',    anchor: [1360, 468],  topview: [1116.9, 128.2],  meters: [18.6, 2.1],  det: 1, z: 0.6,  pass: 'far',  agreement: 'one',  note: 'dark car (far end, count uncertain)' },
+      { id: 'R11', zone: 'right',  planStatus: 'unconfirmed', anchor: null,         topview: null,             meters: null,         det: 0, z: null, pass: 'far',  agreement: 'none', note: 'not visible in photo' },
+      // Middle block (aisle informal bays)
+      { id: 'M1',  zone: 'middle', planStatus: 'informal',    anchor: [690, 770],   topview: [596.8, 827.8],   meters: [9.9, 13.8],  det: 1, z: 4.5,  pass: 'near', agreement: 'both', note: 'black sedan' },
+      { id: 'M2',  zone: 'middle', planStatus: 'informal',    anchor: [915, 775],   topview: [774.2, 825.4],   meters: [12.9, 13.8], det: 1, z: 4.3,  pass: 'near', agreement: 'both', note: 'red sedan' },
+      { id: 'M3',  zone: 'middle', planStatus: 'informal',    anchor: [1105, 800],  topview: [913.7, 848.5],   meters: [15.2, 14.1], det: 1, z: 1.5,  pass: 'near', agreement: 'one',  note: 'blue sedan (depth missed z=1.5; detector confirmed)' },
+      { id: 'M4',  zone: 'middle', planStatus: 'informal',    anchor: [770, 960],   topview: [749.5, 1017.4],  meters: [12.5, 17.0], det: 1, z: 2.4,  pass: 'near', agreement: 'one',  note: 'silver sedan, parked crosswise (depth missed z=2.4; detector confirmed)' },
+      { id: 'M5',  zone: 'middle', planStatus: 'informal',    anchor: [995, 630],   topview: [773.9, 582.4],   meters: [12.9, 9.7],  det: 1, z: 16.4, pass: 'far',  agreement: 'both', note: 'white hatchback' },
+      { id: 'M6',  zone: 'middle', planStatus: 'informal',    anchor: [1040, 555],  topview: [777.6, 394.6],   meters: [13.0, 6.6],  det: 1, z: 9.9,  pass: 'far',  agreement: 'both', note: 'dark small car' },
+      { id: 'M7',  zone: 'middle', planStatus: 'informal',    anchor: [1068, 520],  topview: [788.2, 284.3],   meters: [13.1, 4.7],  det: 1, z: 7.0,  pass: 'far',  agreement: 'both', note: 'blue car (far end of column)' }
+    ];
+
+    const AREA_B2_SLOTS = AREA_B2_RAW_ROWS.map((r, i) => {
+      const idxStr = String(i + 1).padStart(2, '0');
+      const isOccupied = (r.det === 1);
+      const consumed = r.agreement === 'both' ? 0.94 : (r.agreement === 'one' ? 0.72 : 0.04);
+      const yoloConf = r.agreement === 'both' ? 0.62 : (r.agreement === 'one' ? 0.41 : 0.05);
+      return {
+        id: r.id,
+        uuid: `30000000-0000-4000-8000-0000000001${idxStr}`,
+        lot: 'B2',
+        compat: 'car_only',
+        areaM2: 12.00,
+        totalPx: 43200,
+        zone: r.zone,
+        planStatus: r.planStatus,
+        anchor: r.anchor,
+        topview: r.topview,
+        meters: r.meters,
+        det: r.det,
+        heightZ: r.z,
+        depthPass: r.pass,
+        agreement: r.agreement,
+        note: r.note,
+        yoloClass: r.det === 1 ? 'car' : null,
+        yoloConf,
+        consumedRatio: consumed,
+        status: isOccupied ? 'occupied' : 'available',
+        camPolygon: r.anchor ? [
+          [r.anchor[0] * (640/2048) - 18, r.anchor[1] * (480/1536) - 14],
+          [r.anchor[0] * (640/2048) + 18, r.anchor[1] * (480/1536) - 14],
+          [r.anchor[0] * (640/2048) + 18, r.anchor[1] * (480/1536) + 14],
+          [r.anchor[0] * (640/2048) - 18, r.anchor[1] * (480/1536) + 14]
+        ] : [[0,0],[0,0],[0,0],[0,0]],
+        bevRect: { x: 0, y: 0, w: 0, h: 0 }
+      };
+    });
+
+    // ════════════════════════════════════════════════════════════════
     // CALIBRATED CONFIGURATIONS FOR CAMPUS VIEWS
     // ════════════════════════════════════════════════════════════════
     const SCENE_CONFIGS = {
+      // ── AREA B2: DUAL-MODEL CROSS-CHECK (29 SLOTS) ────────────────
+      'samples/area_b2_raw.jpg': {
+        isAreaB2: true,
+        name: 'Area B2 — 29 Slots (YOLOX-L + MiDaS Depth)',
+        lot: 'B2',
+        camId: 'cam-area-b2-01',
+        res: '2048×1536',
+        pitch: '31.8° Pinhole (F=1000, Roll=-7.0°)',
+        poly12: [
+          [0,800],[450,640],[880,462],[1290,462],[1560,560],[2048,800],
+          [2048,1450],[1400,1340],[1000,1265],[600,1195],[300,1130],[0,1070]
+        ],
+        refSeg: {
+          silver: [[600, 1055], [879, 1085]],
+          vios:   [[493, 677], [624, 689]]
+        },
+        farZooms: {
+          farLeft:  [640, 430, 1010, 640],
+          farRight: [1230, 430, 1570, 640]
+        },
+        groundPatchesNear: [
+          [1000, 1000, 1620, 1230], [1150, 480, 1260, 640], [1190, 650, 1290, 880],
+          [150, 1060, 520, 1110], [560, 1130, 1000, 1250]
+        ],
+        groundPatchesFar: [
+          [1110, 520, 1270, 700], [1210, 700, 1290, 840], [1040, 445, 1130, 470]
+        ],
+        overlayUrls: {
+          check: 'samples/area_b2_check.jpg',
+          heightmap: 'samples/area_b2_heightmap.jpg',
+          topview: 'samples/area_b2_topview.jpg',
+          plan: 'samples/area_b2_plan.png'
+        },
+        groundQuad: {
+          src: [[880*(640/2048), 462*(480/1536)], [1290*(640/2048), 462*(480/1536)], [2048*(640/2048), 1450*(480/1536)], [0, 1070*(480/1536)]],
+          dst: [[50, 70], [590, 70], [590, 420], [50, 420]]
+        },
+        slots: AREA_B2_SLOTS
+      },
+
       // ── VIEW B: FRONTAL PERSPECTIVE (LOT B) ───────────────────────
       'samples/cam_view_B.jpg': {
         name: 'Campus View B (Frontal Lot B)',
@@ -656,24 +804,220 @@
     const state = {
       activeStep: 1,
       cameraMode: 'cctv',
-      currentSceneKey: 'samples/cam_view_B.jpg',
+      currentSceneKey: 'samples/area_b2_raw.jpg',
+      b2LeftLayer: 'interactive', // 'interactive' | 'check' | 'heightmap'
+      b2RightMode: 'topview',     // 'topview' | 'schematic'
       selectedSlotIndex: 0,
       isAutoplay: false,
       autoplayInterval: null,
       showGrid: true,
       showWarpedPlane: true,
       loadedImage: null,
-      sourceName: 'cam_view_B.jpg',
+      b2OverlayImages: {},
+      sourceName: 'area_b2_raw.jpg',
       isCustomImage: false,
       isAnalyzing: false,
       confidenceHistory: Array.from({length: 60}, () => 0.93 + Math.random() * 0.04)
     };
 
     function getActiveConfig() {
-      if (SCENE_CONFIGS[state.currentSceneKey]) {
-        return SCENE_CONFIGS[state.currentSceneKey];
+      return SCENE_CONFIGS[state.currentSceneKey] || SCENE_CONFIGS['samples/area_b2_raw.jpg'];
+    }
+
+    function preloadB2Overlays() {
+      const cfg = SCENE_CONFIGS['samples/area_b2_raw.jpg'];
+      if (!cfg || !cfg.overlayUrls) return;
+      Object.entries(cfg.overlayUrls).forEach(([key, url]) => {
+        if (state.b2OverlayImages[key]) return;
+        const im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload = () => {
+          state.b2OverlayImages[key] = im;
+          if (getActiveConfig().isAreaB2) renderAll();
+        };
+        im.src = url;
+      });
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // AREA B2 SHARED GEOMETRY, SCHEMATIC LAYOUT & HIT-TEST HELPERS
+    // ════════════════════════════════════════════════════════════════
+    const B2_AGREEMENT_COLORS = {
+      both: '#10b981', // Green (YOLOX-L + MiDaS agree)
+      one:  '#f59e0b', // Orange/Amber (single-model evidence)
+      none: '#f43f5e'  // Red (unconfirmed / neither)
+    };
+
+    function drawContainImage(ctx, img, canvasW, canvasH) {
+      const iw = img.naturalWidth || img.width;
+      const ih = img.naturalHeight || img.height;
+      const scale = Math.min(canvasW / iw, canvasH / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const ox = (canvasW - dw) / 2;
+      const oy = (canvasH - dh) / 2;
+      ctx.drawImage(img, ox, oy, dw, dh);
+      return { scale, ox, oy, dw, dh };
+    }
+
+    function drawB2Badges(ctx, pts, radius, selectedIdx) {
+      pts.forEach(({ idx, x, y, slot }) => {
+        const isSel = idx === selectedIdx;
+        const col = B2_AGREEMENT_COLORS[slot.agreement] || '#10b981';
+
+        ctx.save();
+        if (isSel) {
+          ctx.beginPath();
+          ctx.arc(x, y, radius + 5, 0, Math.PI * 2);
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.arc(x, y, radius + 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${Math.max(8, Math.round(radius * 0.78))}px JetBrains Mono`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(slot.id, x, y + 0.5);
+        ctx.restore();
+      });
+    }
+
+    function getB2SchematicBoxes(canvasW, canvasH, slots) {
+      // Computes normalized schematic boxes (L1-L11 left, R1-R11 right, M1-M7 middle aisle)
+      const padX = Math.max(16, canvasW * 0.045);
+      const padTop = Math.max(26, canvasH * 0.11);
+      const padBot = Math.max(24, canvasH * 0.10);
+      const usableH = canvasH - padTop - padBot;
+      const rowStep = usableH / 11;
+      const bayH = rowStep - 2;
+      const sideW = Math.min(82, canvasW * 0.17);
+      const cx = canvasW / 2;
+
+      const idxById = {};
+      slots.forEach((s, idx) => { idxById[s.id] = idx; });
+      const boxes = [];
+
+      // Left row (L1 bottom .. L11 top) & Right row (R1 bottom .. R11 top)
+      for (let i = 0; i < 11; i++) {
+        const y = padTop + (10 - i) * rowStep;
+        const lId = `L${i + 1}`;
+        const rId = `R${i + 1}`;
+        if (idxById[lId] !== undefined) {
+          boxes.push({ idx: idxById[lId], slot: slots[idxById[lId]], x: padX, y, w: sideW, h: bayH });
+        }
+        if (idxById[rId] !== undefined) {
+          boxes.push({ idx: idxById[rId], slot: slots[idxById[rId]], x: canvasW - padX - sideW, y, w: sideW, h: bayH });
+        }
       }
-      return SCENE_CONFIGS['samples/cam_view_B.jpg'];
+
+      // Middle block: M1..M3 side-by-side near bottom + crosswise M4 below + column M5..M7 going up
+      const mBayW = Math.min(34, canvasW * 0.072);
+      const mBayH = Math.min(54, usableH * 0.21);
+      const yb = canvasH - padBot - rowStep * 1.15;
+
+      ['M1', 'M2', 'M3'].forEach((id, k) => {
+        if (idxById[id] !== undefined) {
+          boxes.push({
+            idx: idxById[id], slot: slots[idxById[id]],
+            x: cx - 1.5 * mBayW - 2 + k * (mBayW + 2), y: yb - mBayH, w: mBayW, h: mBayH
+          });
+        }
+      });
+
+      if (idxById['M4'] !== undefined) {
+        const cw = mBayW * 2.3;
+        boxes.push({
+          idx: idxById['M4'], slot: slots[idxById['M4']],
+          x: cx - cw / 2, y: yb + 4, w: cw, h: Math.max(18, bayH * 1.1)
+        });
+      }
+
+      ['M5', 'M6', 'M7'].forEach((id, k) => {
+        if (idxById[id] !== undefined) {
+          boxes.push({
+            idx: idxById[id], slot: slots[idxById[id]],
+            x: cx - mBayW / 2, y: yb - mBayH - (k + 1) * (mBayH * 0.78 + 2), w: mBayW, h: mBayH * 0.78
+          });
+        }
+      });
+
+      return boxes;
+    }
+
+    function drawB2Schematic(ctx, canvasW, canvasH, slots, selectedIdx, compact) {
+      ctx.fillStyle = '#070c16';
+      ctx.fillRect(0, 0, canvasW, canvasH);
+
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(10, 10, canvasW - 20, canvasH - 20);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `bold ${compact ? 10 : 12}px JetBrains Mono`;
+      ctx.fillText(`AREA B2 — 29-SLOT MAP (2.4m × 5.0m • TOP = FAR END)`, 18, compact ? 22 : 28);
+
+      const boxes = getB2SchematicBoxes(canvasW, canvasH, slots);
+      boxes.forEach(({ idx, slot, x, y, w, h }) => {
+        const isSel = idx === selectedIdx;
+        const col = B2_AGREEMENT_COLORS[slot.agreement] || '#10b981';
+
+        ctx.save();
+        if (slot.planStatus === 'unconfirmed') {
+          ctx.fillStyle = 'rgba(244, 63, 94, 0.12)';
+        } else if (slot.planStatus === 'probable') {
+          ctx.fillStyle = 'rgba(245, 158, 11, 0.18)';
+        } else {
+          ctx.fillStyle = slot.agreement === 'both' ? 'rgba(16, 185, 129, 0.24)' : 'rgba(245, 158, 11, 0.22)';
+        }
+        ctx.fillRect(x, y, w, h);
+
+        if (slot.planStatus === 'unconfirmed') {
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+          ctx.lineWidth = 1;
+          for (let sx = 0; sx < w; sx += 8) {
+            ctx.beginPath();
+            ctx.moveTo(x + sx, y);
+            ctx.lineTo(x + Math.min(w, sx + h), y + Math.min(h, w - sx));
+            ctx.stroke();
+          }
+        }
+
+        ctx.strokeStyle = isSel ? '#38bdf8' : col;
+        ctx.lineWidth = isSel ? 2.5 : 1.3;
+        ctx.strokeRect(x, y, w, h);
+
+        ctx.fillStyle = isSel ? '#38bdf8' : '#f8fafc';
+        ctx.font = `bold ${compact ? 9 : 10}px JetBrains Mono`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const label = compact ? slot.id : `${slot.id}${slot.heightZ !== null ? ' z' + slot.heightZ : ''}`;
+        ctx.fillText(label, x + w / 2, y + h / 2);
+        ctx.restore();
+      });
+      return boxes;
+    }
+
+    function hitTestCirclePoints(pts, x, y, maxRadius) {
+      let bestIdx = -1;
+      let bestDist = maxRadius * maxRadius;
+      pts.forEach(({ idx, x: px, y: py }) => {
+        const d2 = (px - x) * (px - x) + (py - y) * (py - y);
+        if (d2 <= bestDist) {
+          bestDist = d2;
+          bestIdx = idx;
+        }
+      });
+      return bestIdx;
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -749,7 +1093,36 @@
       const slot = cfg.slots[slotIdx] || cfg.slots[0];
       const consumedRatio = slot.consumedRatio;
       const remainingRatio = Math.max(0.0, 1.0 - consumedRatio);
-      
+
+      if (cfg.isAreaB2) {
+        const isConfirmedBoth = slot.agreement === 'both';
+        const isOneOnly = slot.agreement === 'one';
+        let instantConfidence = 0.25;
+        let finalCall = 'unknown';
+
+        if (slot.planStatus === 'unconfirmed') {
+          finalCall = 'available';
+          instantConfidence = 0.72; // empty / not seen even on zoomed crops
+        } else if (isConfirmedBoth) {
+          finalCall = 'occupied';
+          instantConfidence = slot.depthPass === 'near' ? 0.96 : 0.93;
+        } else if (isOneOnly) {
+          finalCall = slot.planStatus === 'probable' ? 'occupied' : 'occupied';
+          instantConfidence = slot.planStatus === 'probable' ? 0.64 : 0.78;
+        }
+
+        const se = isConfirmedBoth ? 0.015 : 0.075;
+        const ciLow = Math.max(0.0, instantConfidence - 1.96 * se).toFixed(2);
+        const ciHigh = Math.min(1.0, instantConfidence + 1.96 * se).toFixed(2);
+        const mean = ((state.confidenceHistory.reduce((a, b) => a + b, 0) / state.confidenceHistory.length) * (isConfirmedBoth ? 1.0 : (isOneOnly ? 0.80 : 0.76))).toFixed(3);
+
+        return {
+          slot, consumedRatio, remainingRatio,
+          isSpillover: false, isOccluded: slot.planStatus === 'probable',
+          instantConfidence, mean, ci: `[${ciLow}, ${ciHigh}]`, finalCall
+        };
+      }
+
       const isOccupied = (slot.status === 'occupied' || consumedRatio >= 0.50);
       const isSpillover = (slot.status === 'spillover');
       const isOccluded = (state.cameraMode === 'cctv' && slotIdx === 4 && slot.status === 'occluded');
@@ -789,15 +1162,131 @@
 
       ctx.clearRect(0, 0, w, h);
 
+      // Area B2 mode supports switching between raw interactive layer, pre-rendered AI check, and MiDaS heightmap
+      let activePhoto = state.loadedImage;
+      if (cfg.isAreaB2) {
+        if (state.b2LeftLayer === 'check' && state.b2OverlayImages.check) {
+          activePhoto = state.b2OverlayImages.check;
+        } else if (state.b2LeftLayer === 'heightmap' && state.b2OverlayImages.heightmap) {
+          activePhoto = state.b2OverlayImages.heightmap;
+        }
+      }
+
       // 1. Draw Ingested Photo
-      if (state.loadedImage && state.loadedImage.complete) {
-        ctx.drawImage(state.loadedImage, 0, 0, w, h);
+      if (activePhoto && activePhoto.complete) {
+        ctx.drawImage(activePhoto, 0, 0, w, h);
       } else {
         const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
         bgGrad.addColorStop(0, '#0f172a');
         bgGrad.addColorStop(1, '#020617');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, w, h);
+      }
+
+      // Area B2 dedicated interactive visualization across pipeline steps
+      if (cfg.isAreaB2) {
+        const sx = w / 2048;
+        const sy = h / 1536;
+        const pts = cfg.slots
+          .map((slot, idx) => slot.anchor ? { idx, slot, x: slot.anchor[0] * sx, y: slot.anchor[1] * sy } : null)
+          .filter(Boolean);
+        state.b2LeftPoints = pts;
+
+        if (state.b2LeftLayer !== 'interactive') {
+          // Highlight only the selected slot ring over the pre-rendered AI check / heightmap image
+          const selPt = pts.find(p => p.idx === state.selectedSlotIndex);
+          if (selPt) {
+            ctx.beginPath();
+            ctx.arc(selPt.x, selPt.y, 13, 0, Math.PI * 2);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+          }
+          return;
+        }
+
+        if (step === 1) {
+          ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(w/2 - 25, h/2); ctx.lineTo(w/2 + 25, h/2);
+          ctx.moveTo(w/2, h/2 - 25); ctx.lineTo(w/2, h/2 + 25);
+          ctx.stroke();
+          return;
+        }
+
+        // Step 2+: Draw 12-vertex ground-plane warp region POLY + 2.55 m calibration segments
+        if (step >= 2 && cfg.poly12) {
+          ctx.save();
+          ctx.beginPath();
+          cfg.poly12.forEach((p, i) => {
+            if (i === 0) ctx.moveTo(p[0] * sx, p[1] * sy);
+            else ctx.lineTo(p[0] * sx, p[1] * sy);
+          });
+          ctx.closePath();
+          ctx.strokeStyle = '#06b6d4';
+          ctx.lineWidth = step === 2 ? 2.2 : 1.25;
+          ctx.fillStyle = step === 2 ? 'rgba(6, 182, 212, 0.14)' : 'rgba(6, 182, 212, 0.04)';
+          ctx.fill();
+          ctx.stroke();
+
+          if (step === 2 && cfg.refSeg) {
+            Object.entries(cfg.refSeg).forEach(([label, seg]) => {
+              ctx.strokeStyle = '#facc15';
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.moveTo(seg[0][0] * sx, seg[0][1] * sy);
+              ctx.lineTo(seg[1][0] * sx, seg[1][1] * sy);
+              ctx.stroke();
+              ctx.fillStyle = '#fef08a';
+              ctx.font = 'bold 9px JetBrains Mono';
+              ctx.fillText(`${label} (2.55m)`, seg[0][0] * sx, seg[0][1] * sy - 6);
+            });
+          }
+          ctx.restore();
+        }
+
+        // Step 4: Draw far-end zoomed 640x640 detector crop regions
+        if (step === 4 && cfg.farZooms) {
+          Object.entries(cfg.farZooms).forEach(([label, [x0, y0, x1, y1]]) => {
+            ctx.save();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 1.8;
+            ctx.setLineDash([5, 3]);
+            ctx.strokeRect(x0 * sx, y0 * sy, (x1 - x0) * sx, (y1 - y0) * sy);
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.9)';
+            ctx.fillRect(x0 * sx, y0 * sy - 14, 116, 14);
+            ctx.fillStyle = '#020617';
+            ctx.font = 'bold 8px JetBrains Mono';
+            ctx.fillText(`YOLOX zoom: ${label}`, x0 * sx + 3, y0 * sy - 4);
+            ctx.restore();
+          });
+        }
+
+        // Step 5: Draw bare-concrete ground plane reference patches (MiDaS residual fit)
+        if (step === 5) {
+          (cfg.groundPatchesNear || []).forEach(([x0, y0, x1, y1]) => {
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 1.4;
+            ctx.setLineDash([4, 2]);
+            ctx.strokeRect(x0 * sx, y0 * sy, (x1 - x0) * sx, (y1 - y0) * sy);
+            ctx.setLineDash([]);
+          });
+          (cfg.groundPatchesFar || []).forEach(([x0, y0, x1, y1]) => {
+            ctx.strokeStyle = '#818cf8';
+            ctx.lineWidth = 1.4;
+            ctx.setLineDash([4, 2]);
+            ctx.strokeRect(x0 * sx, y0 * sy, (x1 - x0) * sx, (y1 - y0) * sy);
+            ctx.setLineDash([]);
+          });
+        }
+
+        // Step 3+: Draw all 27 visible slot badges color-coded by dual-model agreement
+        if (step >= 3) {
+          drawB2Badges(ctx, pts, 9.5, state.selectedSlotIndex);
+        }
+        return;
       }
 
       // STEP 1: RAW INGESTION (Show subtle crosshairs)
@@ -879,27 +1368,20 @@
           if (s.yoloBbox) {
             const [bx, by, bw, bh] = s.yoloBbox;
             
-            // Perception bracket corners (Waymo / Tesla style)
             ctx.strokeStyle = '#f59e0b';
             ctx.lineWidth = 2;
             const len = 10;
-            // top-left
             ctx.beginPath(); ctx.moveTo(bx, by + len); ctx.lineTo(bx, by); ctx.lineTo(bx + len, by); ctx.stroke();
-            // top-right
             ctx.beginPath(); ctx.moveTo(bx + bw - len, by); ctx.lineTo(bx + bw, by); ctx.lineTo(bx + bw, by + len); ctx.stroke();
-            // bottom-left
             ctx.beginPath(); ctx.moveTo(bx, by + bh - len); ctx.lineTo(bx, by + bh); ctx.lineTo(bx + len, by + bh); ctx.stroke();
-            // bottom-right
             ctx.beginPath(); ctx.moveTo(bx + bw - len, by + bh); ctx.lineTo(bx + bw, by + bh); ctx.lineTo(bx + bw, by + bh - len); ctx.stroke();
 
-            // Label Chip
             ctx.fillStyle = '#f59e0b';
             ctx.fillRect(bx, by - 16, 80, 15);
             ctx.fillStyle = '#020617';
             ctx.font = 'bold 9px JetBrains Mono';
             ctx.fillText(`${s.yoloClass} ${s.yoloConf}`, bx + 4, by - 5);
 
-            // Ground Contact Patch Projection (Bottom 20%)
             ctx.strokeStyle = '#10b981';
             ctx.lineWidth = 1.5;
             ctx.strokeRect(bx, by + bh - 8, bw, 8);
@@ -935,16 +1417,45 @@
       const cfg = getActiveConfig();
 
       ctx.clearRect(0, 0, w, h);
-
-      // Background rectified pavement
       ctx.fillStyle = '#060a12';
       ctx.fillRect(0, 0, w, h);
 
-      // 1. RENDER ACTUAL HOMOGRAPHY WARPED GROUND PLANE
+      // Area B2: Metric Top-View Warp OR 29-Slot Schematic Plan
+      if (cfg.isAreaB2) {
+        if (state.b2RightMode === 'schematic') {
+          state.b2BevBoxes = drawB2Schematic(ctx, w, h, cfg.slots, state.selectedSlotIndex, false);
+          return;
+        }
+        state.b2BevBoxes = [];
+        const topImg = state.b2OverlayImages.topview;
+        let topPts = [];
+        if (topImg && topImg.complete) {
+          const fit = drawContainImage(ctx, topImg, w, h);
+          if (state.showGrid) {
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+            ctx.lineWidth = 1;
+            const gridSize = Math.round(60 * fit.scale); // ~1 metre grid squares (60 px/m)
+            for (let gx = fit.ox; gx < fit.ox + fit.dw; gx += gridSize) {
+              ctx.beginPath(); ctx.moveTo(gx, fit.oy); ctx.lineTo(gx, fit.oy + fit.dh); ctx.stroke();
+            }
+            for (let gy = fit.oy; gy < fit.oy + fit.dh; gy += gridSize) {
+              ctx.beginPath(); ctx.moveTo(fit.ox, gy); ctx.lineTo(fit.ox + fit.dw, gy); ctx.stroke();
+            }
+          }
+          topPts = cfg.slots
+            .map((slot, idx) => slot.topview ? {
+              idx, slot, x: fit.ox + slot.topview[0] * fit.scale, y: fit.oy + slot.topview[1] * fit.scale
+            } : null)
+            .filter(Boolean);
+          drawB2Badges(ctx, topPts, 9, state.selectedSlotIndex);
+        }
+        state.b2TopviewPoints = topPts;
+        return;
+      }
+
+      // 1. RENDER ACTUAL HOMOGRAPHY WARPED GROUND PLANE (Views A/B/C/Custom)
       if (state.showWarpedPlane && state.loadedImage && state.loadedImage.complete) {
         warpQuadToCanvas(ctx, state.loadedImage, cfg.groundQuad.src, cfg.groundQuad.dst, 10);
-        
-        // Translucent dark wash for readability
         ctx.fillStyle = 'rgba(6, 10, 18, 0.45)';
         ctx.fillRect(0, 0, w, h);
       }
@@ -969,7 +1480,6 @@
         const isOcc = (s.status === 'occupied');
         const strokeColor = isOcc ? '#f43f5e' : '#10b981';
 
-        // Fill & Border
         ctx.fillStyle = isOcc ? 'rgba(244, 63, 94, 0.22)' : 'rgba(16, 185, 129, 0.16)';
         ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
 
@@ -977,12 +1487,10 @@
         ctx.lineWidth = isSelected ? 3 : 1.75;
         ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
 
-        // Header label
         ctx.fillStyle = isSelected ? '#38bdf8' : '#ffffff';
         ctx.font = 'bold 11px JetBrains Mono';
         ctx.fillText(s.id, rect.x + 8, rect.y + 22);
 
-        // Vehicle footprint silhouette inside occupied stalls
         if (isOcc) {
           const padX = 14;
           const padY = 30;
@@ -991,7 +1499,6 @@
           ctx.roundRect(rect.x + padX, rect.y + padY, rect.w - padX*2, rect.h - padY*2, 6);
           ctx.fill();
 
-          // Directional Arrow
           ctx.fillStyle = '#ffffff';
           ctx.beginPath();
           ctx.moveTo(rect.x + rect.w/2, rect.y + padY + 12);
@@ -1001,7 +1508,6 @@
           ctx.fill();
         }
 
-        // Status text at bottom of stall
         ctx.fillStyle = strokeColor;
         ctx.font = 'bold 9px JetBrains Mono';
         ctx.fillText(isOcc ? 'OCCUPIED' : 'AVAILABLE', rect.x + 8, rect.y + rect.h - 10);
@@ -1021,11 +1527,15 @@
 
       ctx.clearRect(0, 0, w, h);
 
+      if (cfg.isAreaB2) {
+        state.b2OverheadBoxes = drawB2Schematic(ctx, w, h, cfg.slots, state.selectedSlotIndex, true);
+        return;
+      }
+
       // Background
       ctx.fillStyle = '#070c16';
       ctx.fillRect(0, 0, w, h);
 
-      // Lot perimeter border
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 1;
       ctx.strokeRect(20, 20, w - 40, h - 40);
@@ -1034,7 +1544,6 @@
       ctx.font = 'bold 10px JetBrains Mono';
       ctx.fillText(`LOT ${cfg.lot} — VISITOR & FACULTY BAYS`, 35, 45);
 
-      // Draw all parking slots
       cfg.slots.forEach((s, idx) => {
         const isOcc = (s.status === 'occupied');
         const isSelected = (idx === state.selectedSlotIndex);
@@ -1051,18 +1560,15 @@
         ctx.lineWidth = isSelected ? 3 : 1.5;
         ctx.strokeRect(mapX, mapY, mapW, mapH);
 
-        // Label
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 10px JetBrains Mono';
         ctx.fillText(s.id, mapX + 8, mapY + 22);
 
-        // Status indicator dot
         ctx.fillStyle = strokeColor;
         ctx.beginPath();
         ctx.arc(mapX + mapW - 12, mapY + 18, 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Occupancy %
         ctx.fillStyle = '#94a3b8';
         ctx.font = '9px JetBrains Mono';
         ctx.fillText(`${Math.round(s.consumedRatio * 100)}%`, mapX + 8, mapY + 45);
@@ -1074,17 +1580,88 @@
     // ════════════════════════════════════════════════════════════════
     function updateInspectorAndPayload() {
       const cfg = getActiveConfig();
+      if (state.selectedSlotIndex >= cfg.slots.length) state.selectedSlotIndex = 0;
       const m = computeSlotMetrics(state.selectedSlotIndex);
-      
+      const isB2 = Boolean(cfg.isAreaB2);
+
+      // Toggle B2-specific UI layer bars cleanly
+      document.getElementById('b2LeftLayers').classList.toggle('hidden', !isB2);
+      document.getElementById('b2RightLayers').classList.toggle('hidden', !isB2);
+      document.getElementById('dropPromptPill').classList.toggle('hidden', isB2);
+      document.getElementById('toggleWarpBtn').classList.toggle('hidden', isB2);
+      document.getElementById('inspectorDualRow').classList.toggle('hidden', !isB2);
+      document.getElementById('inspectorNoteRow').classList.toggle('hidden', !isB2);
+
+      // Sub-metric cards adaptation
+      if (isB2) {
+        document.getElementById('bevOverlayBadge').textContent = state.b2RightMode === 'topview'
+          ? 'Pinhole Metric Top-View (60 px/m • 24.0m × 19.7m)'
+          : '29-Slot Schematic Plan (2.4m × 5.0m bays)';
+        document.getElementById('metricSlotArea').textContent = '12.00 m² (2.4×5.0m)';
+        document.getElementById('metricDriftVal').textContent = 'F=1000 • Roll -7.0°';
+        document.getElementById('metricPartition').textContent = 'L(11)+R(11)+M(7)';
+        document.getElementById('driftBadge').textContent = 'PPM=60 px/m OK';
+        document.getElementById('metricForeshortening').textContent = '31.8° Pitch (H=R·K⁻¹)';
+        document.getElementById('metricOcclusionRisk').textContent = 'Far Ends Stacked (R9-10)';
+        document.getElementById('metricQuadError').textContent = 'Scale: 2.55m Wheelbase';
+        document.getElementById('slotStatusReadout').textContent = '22 Both • 5 One • 2 None';
+        document.getElementById('mapSummaryBadge').textContent = '27 / 29 Seen';
+        document.getElementById('mapLegend').innerHTML = `
+          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Both (22)</span>
+          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> One (5)</span>
+          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> None (2)</span>
+        `;
+      } else {
+        document.getElementById('bevOverlayBadge').textContent = 'Rectified Metric Grid (1px ≈ 1.25cm)';
+        document.getElementById('metricSlotArea').textContent = '12.50 m² (10k px²)';
+        document.getElementById('metricDriftVal').textContent = '0.89 px (< 5.0)';
+        document.getElementById('metricPartition').textContent = `Uniform (${cfg.slots.length} Bays)`;
+        document.getElementById('driftBadge').textContent = 'ΔH: OK (0.89px)';
+        document.getElementById('slotStatusReadout').textContent = `${cfg.slots.length} Stalls Active`;
+        const occCount = cfg.slots.filter(s => s.status === 'occupied').length;
+        document.getElementById('mapSummaryBadge').textContent = `${occCount} / ${cfg.slots.length} Occ`;
+        document.getElementById('mapLegend').innerHTML = `
+          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Available</span>
+          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Occupied</span>
+          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span> Spillover</span>
+        `;
+      }
+
       // Update Slot Inspector Card
-      document.getElementById('inspectorSlotId').textContent = `Slot ${m.slot.id}`;
-      document.getElementById('inspectorCompat').textContent = `${m.slot.compat} • ${m.slot.areaM2}m²`;
+      document.getElementById('inspectorSlotId').textContent = isB2
+        ? `Slot ${m.slot.id} (${m.slot.zone})`
+        : `Slot ${m.slot.id}`;
+      document.getElementById('inspectorCompat').textContent = isB2
+        ? `${m.slot.compat} • 2.4m × 5.0m`
+        : `${m.slot.compat} • ${m.slot.areaM2}m²`;
+
+      if (isB2) {
+        const zStr = m.slot.heightZ !== null ? `z=${m.slot.heightZ} (${m.slot.depthPass})` : 'n/a';
+        const agrUpper = m.slot.agreement.toUpperCase();
+        const dualEl = document.getElementById('inspectorDualVal');
+        dualEl.textContent = `Box: ${m.slot.det} • MiDaS ${zStr} → ${agrUpper}`;
+        dualEl.className = `font-mono ${m.slot.agreement === 'both' ? 'text-emerald-300' : (m.slot.agreement === 'one' ? 'text-amber-300' : 'text-rose-400')}`;
+        const mCoords = m.slot.meters ? ` (${m.slot.meters[0]}m, ${m.slot.meters[1]}m)` : '';
+        document.getElementById('inspectorNoteVal').textContent = `${m.slot.note}${mCoords}`;
+      }
+
       document.getElementById('inspectorAreaVals').textContent = `ρ = ${(m.consumedRatio * 100).toFixed(1)}% | Rem = ${(m.remainingRatio * 100).toFixed(1)}%`;
       document.getElementById('inspectorCiVals').textContent = m.ci;
       document.getElementById('inspectorMeanVal').textContent = m.mean;
-      
+
       const badge = document.getElementById('inspectorFinalBadge');
-      if (m.finalCall === 'occupied') {
+      if (isB2) {
+        if (m.slot.planStatus === 'unconfirmed') {
+          badge.textContent = 'UNCONFIRMED (EMPTY)';
+          badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-emerald-950 text-emerald-300 border border-emerald-800';
+        } else if (m.slot.planStatus === 'probable') {
+          badge.textContent = 'OCCUPIED (PROBABLE)';
+          badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-amber-950 text-amber-300 border border-amber-800';
+        } else {
+          badge.textContent = `OCCUPIED (${m.slot.planStatus.toUpperCase()})`;
+          badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-rose-950 text-rose-300 border border-rose-800';
+        }
+      } else if (m.finalCall === 'occupied') {
         badge.textContent = 'OCCUPIED';
         badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-rose-950 text-rose-300 border border-rose-800';
       } else {
@@ -1097,16 +1674,19 @@
       if (pillContainer) {
         pillContainer.innerHTML = cfg.slots.map((s, idx) => {
           const isSel = (idx === state.selectedSlotIndex);
-          const isOcc = (s.status === 'occupied');
-          const dot = isOcc ? 'bg-rose-500' : 'bg-emerald-400';
-          const activeStyle = isSel 
-            ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-sm' 
+          let dot = s.status === 'occupied' ? 'bg-rose-500' : 'bg-emerald-400';
+          if (isB2) {
+            dot = s.agreement === 'both' ? 'bg-emerald-400' : (s.agreement === 'one' ? 'bg-amber-400' : 'bg-rose-500');
+          }
+          const activeStyle = isSel
+            ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-sm'
             : 'bg-slate-900/80 text-slate-300 border-slate-700/60 hover:border-slate-500';
+          const tag = isB2 ? (s.heightZ !== null ? `z${s.heightZ}` : '—') : `${Math.round(s.consumedRatio * 100)}%`;
           return `
-            <button onclick="selectSlot(${idx})" class="px-2 py-0.5 rounded-md text-[10px] font-mono border flex items-center gap-1.5 transition-all ${activeStyle}">
+            <button onclick="selectSlot(${idx})" class="px-2 py-0.5 rounded-md text-[10px] font-mono border flex items-center gap-1.5 transition-all shrink-0 ${activeStyle}">
               <span class="w-1.5 h-1.5 rounded-full ${dot}"></span>
               <span>${s.id}</span>
-              <span class="text-[9px] opacity-75">${Math.round(s.consumedRatio * 100)}%</span>
+              <span class="text-[9px] opacity-75">${tag}</span>
             </button>
           `;
         }).join('');
@@ -1133,11 +1713,38 @@
       {
         step: 1,
         title: "Step 1 — Dual-Source Ingestion & Stream Calibration",
-        desc: "Ingests raw RTSP frames from oblique CCTV (45° foreshortening) or optimized high-angle mounts (80°).",
+        desc: "Ingests raw camera frames and loads calibrated pinhole or perspective intrinsics.",
         module: "src/parking_occupancy/capture.py",
         render: () => {
           const cfg = getActiveConfig();
           const isCctv = state.cameraMode === 'cctv';
+          if (cfg.isAreaB2) {
+            return `
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                  <div class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                    Area B2 Pinhole Intrinsics (topview_slots.py)
+                  </div>
+                  <ul class="text-[11px] text-slate-300 space-y-1 font-mono">
+                    <li>• Resolution: <span class="text-slate-100">2048 × 1536 px</span></li>
+                    <li>• Focal Length F: <span class="text-cyan-300">1000.0 px</span></li>
+                    <li>• Pitch Offset A: <span class="text-cyan-300">620.0 (≈ 31.8°)</span></li>
+                    <li>• Camera Roll: <span class="text-cyan-300">-7.0° • Horizon ≈ row 148</span></li>
+                  </ul>
+                </div>
+                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                  <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+                    Pretrained Audit Note (One-Photo Baseline)
+                  </div>
+                  <p class="text-[11px] text-slate-300 leading-relaxed">
+                    A single photo isn't a training dataset, so Area B2 pairs a calibrated geometric pinhole warp with <strong class="text-cyan-300">two orthogonal pretrained networks</strong> (<code class="text-amber-300">YOLOX-L</code> + <code class="text-emerald-300">MiDaS-small</code>) checking each slot.
+                  </p>
+                </div>
+              </div>
+            `;
+          }
           return `
             <div class="grid grid-cols-2 gap-3">
               <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1.5">
@@ -1171,10 +1778,36 @@
       {
         step: 2,
         title: "Step 2 — Geometry & Homography Warping (H Matrix)",
-        desc: "Maps perspective 4-point quadrilateral into an orthographic Bird's-Eye View (BEV) ground plane.",
-        module: "src/parking_occupancy/geometry.py",
+        desc: "Rectifies perspective ground pixels into a metric Bird's-Eye View (BEV) plane.",
+        module: "scripts/area_b2/topview_slots.py",
         render: () => {
           const cfg = getActiveConfig();
+          if (cfg.isAreaB2) {
+            return `
+              <div class="space-y-3 text-xs">
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 font-mono">
+                    <div class="text-slate-400 text-[10px] uppercase">Pure-Rotation Homography</div>
+                    <div class="text-cyan-300 mt-1 text-[11px] font-bold">H = R_down · K⁻¹</div>
+                    <div class="text-slate-300 mt-1 text-[10px] space-y-0.5">
+                      <div>Scale: 2.55 m wheelbase (silver & vios)</div>
+                      <div>Output Scale: PPM = 60 px/m (1443×1182)</div>
+                      <div>Covered Area: 24.0 m × 19.7 m ground</div>
+                    </div>
+                  </div>
+                  <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 font-mono">
+                    <div class="text-slate-400 text-[10px] uppercase">12-Vertex Ground Region POLY</div>
+                    <div class="text-slate-300 mt-1 text-[10px] leading-relaxed">
+                      Drops sky, trees, and bottom window ledge before warping; aligns side-on bays left-right via yaw rotation from silver reference car.
+                    </div>
+                  </div>
+                </div>
+                <p class="text-[11px] text-slate-400">
+                  Left view shows the 12-point ground polygon & 2.55 m yellow wheelbase references; right panel shows the exact rectified metric top-down view from <code class="text-cyan-300">topview_slots.py</code>.
+                </p>
+              </div>
+            `;
+          }
           const pts = cfg.groundQuad;
           return `
             <div class="space-y-3 text-xs">
@@ -1208,10 +1841,37 @@
       },
       {
         step: 3,
-        title: "Step 3 — Adaptive Slot Mapping & Drift Compensation",
-        desc: "Detects fiducial anchor drift (ΔH) to realign stalls without full recalibration, and partitions unlined concrete bays.",
+        title: "Step 3 — Adaptive Slot Mapping (L1–L11, R1–R11, M1–M7)",
+        desc: "Maps numbered parking bays (2.4 m × 5.0 m) across left row, right row, and informal center aisle block.",
         module: "docs/02B_ADAPTIVE_SLOT_MAPPING.md",
         render: () => {
+          const cfg = getActiveConfig();
+          if (cfg.isAreaB2) {
+            return `
+              <div class="space-y-3 text-xs">
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                    <div class="text-blue-400 uppercase font-mono text-[10px] font-bold">Left Row (L1–L11)</div>
+                    <div class="text-slate-200 font-bold text-sm font-mono mt-0.5">10 / 11 Seen</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">L1–L10 confirmed; L11 not visible even in zoomed crop.</div>
+                  </div>
+                  <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                    <div class="text-orange-400 uppercase font-mono text-[10px] font-bold">Right Row (R1–R11)</div>
+                    <div class="text-slate-200 font-bold text-sm font-mono mt-0.5">8 + 2 Probable</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">R1–R8 solid; R9–R10 stacked behind van R6; R11 absent.</div>
+                  </div>
+                  <div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                    <div class="text-emerald-400 uppercase font-mono text-[10px] font-bold">Middle Aisle (M1–M7)</div>
+                    <div class="text-slate-200 font-bold text-sm font-mono mt-0.5">7 / 7 Informal</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">M1–M3 front + M4 parked crosswise + M5–M7 column.</div>
+                  </div>
+                </div>
+                <div class="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800 text-[11px] text-slate-400">
+                  <strong>Fixed-Camera Mapping:</strong> Once set per camera via <code class="text-cyan-300">topview_slots.py</code>, every frame reuses the exact anchor projection into metric world coordinates (x_m, y_m).
+                </div>
+              </div>
+            `;
+          }
           return `
             <div class="space-y-3 text-xs">
               <div class="grid grid-cols-2 gap-3">
@@ -1228,7 +1888,7 @@
                 <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1.5">
                   <div class="text-slate-400 uppercase font-mono text-[10px]">Bay Partitioning Model</div>
                   <div class="text-slate-300 text-[11px]">Mode: <span class="font-bold text-cyan-300 font-mono">calibrated_lot_bays</span></div>
-                  <div class="text-slate-300 text-[11px]">Total Bays: <span class="font-mono text-slate-100">6 Bays Calibrated</span></div>
+                  <div class="text-slate-300 text-[11px]">Total Bays: <span class="font-mono text-slate-100">${cfg.slots.length} Bays Calibrated</span></div>
                   <div class="text-slate-300 text-[11px]">Standard Bay Area: <span class="font-mono text-emerald-400">12.50 m²</span></div>
                 </div>
               </div>
@@ -1238,12 +1898,39 @@
       },
       {
         step: 4,
-        title: "Step 4 — Low-Weight YOLO Object Proposals",
-        desc: "Detects candidate vehicles with low confidence floor (≥0.30) to avoid false negatives. Never decides final occupancy alone.",
-        module: "src/parking_occupancy/inference.py",
+        title: "Step 4 — Model A: Tiled YOLOX-L + Far-End Zoomed Crops",
+        desc: "Supporting object detector runs tiled passes plus zoomed 640×640 crops on both far ends where cars are tiny.",
+        module: "scripts/area_b2/parking_ai_check.py",
         render: () => {
           const cfg = getActiveConfig();
           const active = cfg.slots[state.selectedSlotIndex];
+          if (cfg.isAreaB2) {
+            return `
+              <div class="space-y-3 text-xs">
+                <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <div class="font-bold text-slate-200">Model A: Pretrained YOLOX-L (ONNX CPU)</div>
+                    <div class="text-slate-400 text-[11px]">Full tiled pass (<span class="font-mono text-amber-400">score > 0.30</span>) + Far-end 640×640 zoom (<span class="font-mono text-amber-400">> 0.25</span>)</div>
+                  </div>
+                  <span class="px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800 text-[10px] font-mono">
+                    27 / 29 BOXES
+                  </span>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-[11px] space-y-1 font-mono">
+                    <div class="text-slate-400 text-[10px] uppercase">Zoomed Far-End Verification</div>
+                    <div>far-left: <span class="text-cyan-300">[640,430,1010,640]</span> → no L11</div>
+                    <div>far-right: <span class="text-cyan-300">[1230,430,1570,640]</span> → ~2 dark cars</div>
+                  </div>
+                  <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-[11px] space-y-1 font-mono">
+                    <div class="text-slate-400 text-[10px] uppercase">Active Slot (${active.id}) Proposal</div>
+                    <div>Detector Hit: <span class="${active.det ? 'text-emerald-400' : 'text-rose-400'} font-bold">${active.det ? '1 (Vehicle Box Present)' : '0 (No Box)'}</span></div>
+                    <div>Note: <span class="text-slate-300">${active.note}</span></div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
           return `
             <div class="space-y-3 text-xs">
               <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
@@ -1276,11 +1963,37 @@
       },
       {
         step: 5,
-        title: "Step 5 — Contextual Intelligence & Area Analysis",
-        desc: "Calculates vehicle consumed footprint area (ρ), remaining usable space (A_rem), and alerts on neighbor spillover.",
+        title: "Step 5 — Model B: MiDaS-Small Depth Plane Residual & Context",
+        desc: "Fits a ground plane to bare concrete in relative inverse depth and measures height z-scores above concrete.",
         module: "docs/04_CONTEXTUAL_AWARENESS.md",
         render: () => {
+          const cfg = getActiveConfig();
           const m = computeSlotMetrics(state.selectedSlotIndex);
+          if (cfg.isAreaB2) {
+            const zTxt = m.slot.heightZ !== null ? `${m.slot.heightZ} (${m.slot.depthPass})` : 'N/A';
+            const upOk = m.slot.heightZ !== null && m.slot.heightZ >= 4.0;
+            return `
+              <div class="space-y-3 text-xs">
+                <div class="grid grid-cols-3 gap-2 text-center">
+                  <div class="bg-slate-950/80 p-2 rounded-xl border border-slate-800">
+                    <div class="text-slate-400 text-[9px] uppercase font-mono">MiDaS Height z-Score</div>
+                    <div class="font-mono ${upOk ? 'text-emerald-400' : 'text-amber-400'} font-bold text-sm mt-0.5">${zTxt}</div>
+                  </div>
+                  <div class="bg-slate-950/80 p-2 rounded-xl border border-slate-800">
+                    <div class="text-slate-400 text-[9px] uppercase font-mono">Threshold Rule</div>
+                    <div class="font-mono text-cyan-300 font-bold text-sm mt-0.5">z ≥ 4.0σ</div>
+                  </div>
+                  <div class="bg-slate-950/80 p-2 rounded-xl border border-slate-800">
+                    <div class="text-slate-400 text-[9px] uppercase font-mono">Trust Policy</div>
+                    <div class="font-mono text-amber-300 font-bold text-sm mt-0.5">Positive-Only</div>
+                  </div>
+                </div>
+                <div class="p-2.5 rounded-xl border border-slate-800 bg-slate-950/70 text-[11px] text-slate-300 leading-relaxed">
+                  <strong>Asymmetric Depth Policy:</strong> Ground plane <code class="text-cyan-300">d = ax + by + c</code> (with 2.5σ outlier drop) fits near-half concrete accurately, but MiDaS missed <strong>M3 (z=1.5)</strong>, <strong>M4 (z=2.4)</strong>, and <strong>R3 (z=2.6)</strong> even though cars are clearly there. Therefore, a low z-score is <em>never</em> proof of emptiness — only a positive <code class="text-emerald-300">yes</code> confirms vehicle mass. Switch to <em>MiDaS Heightmap</em> above to inspect the residual heatmap!
+                </div>
+              </div>
+            `;
+          }
           return `
             <div class="space-y-3 text-xs">
               <div class="grid grid-cols-3 gap-2 text-center">
@@ -1310,11 +2023,46 @@
       },
       {
         step: 6,
-        title: "Step 6 — Cognitive AI Fusion & 1-Minute Mean Buffer",
-        desc: "Fuses slot area, candidate overlap, 95% Confidence Interval, and 60-second temporal sliding window mean (p̄₆₀ₛ).",
+        title: "Step 6 — Dual-Model Cross-Check & Cognitive Fusion",
+        desc: "Aggregates agreement between YOLOX-L and MiDaS-small across all 29 slots, 1-minute mean, and 95% CI.",
         module: "docs/05_COGNITIVE_AI_FUSION_MODEL.md",
         render: () => {
+          const cfg = getActiveConfig();
           const m = computeSlotMetrics(state.selectedSlotIndex);
+          if (cfg.isAreaB2) {
+            return `
+              <div class="space-y-3 text-xs">
+                <div class="grid grid-cols-3 gap-2 text-center font-mono">
+                  <div class="bg-emerald-950/40 p-2 rounded-xl border border-emerald-800/60">
+                    <div class="text-emerald-300 font-bold text-base">22 / 29</div>
+                    <div class="text-[9px] text-emerald-200/80 uppercase">BOTH Agree (Strong)</div>
+                    <div class="text-[9px] text-slate-400">L1–10, R1–2, R4–8, M1–2, M5–7</div>
+                  </div>
+                  <div class="bg-amber-950/40 p-2 rounded-xl border border-amber-800/60">
+                    <div class="text-amber-300 font-bold text-base">5 / 29</div>
+                    <div class="text-[9px] text-amber-200/80 uppercase">ONE Model Only</div>
+                    <div class="text-[9px] text-slate-400">R3, R9–10 (prob), M3–M4</div>
+                  </div>
+                  <div class="bg-rose-950/40 p-2 rounded-xl border border-rose-800/60">
+                    <div class="text-rose-300 font-bold text-base">2 / 29</div>
+                    <div class="text-[9px] text-rose-200/80 uppercase">NONE (Not Visible)</div>
+                    <div class="text-[9px] text-slate-400">L11, R11 (absent)</div>
+                  </div>
+                </div>
+                <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-400 font-mono uppercase text-[10px]">1-Min Sliding Mean (Selected: ${m.slot.id})</span>
+                    <span class="text-cyan-400 font-mono font-bold">p̄₆₀ₛ = ${m.mean} • CI ${m.ci}</span>
+                  </div>
+                  <div class="h-8 bg-slate-900 rounded-lg p-1 flex items-end gap-1 border border-slate-800/80">
+                    ${state.confidenceHistory.map(v => `
+                      <div class="flex-1 bg-cyan-500/80 rounded-t hover:bg-cyan-400 transition-all" style="height: ${Math.round(v * 100)}%" title="${v.toFixed(3)}"></div>
+                    `).join('')}
+                  </div>
+                </div>
+              </div>
+            `;
+          }
           return `
             <div class="space-y-3 text-xs">
               <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
@@ -1348,12 +2096,51 @@
       },
       {
         step: 7,
-        title: "Step 7 — Final Map Representation & SENTRY Event Schema",
-        desc: "Generates real-time overhead campus BEV map state and dispatches CANDIDATE-2026-10-30.2 JSON event.",
+        title: "Step 7 — Final Map, 29-Slot CSV & Next Training Roadmap",
+        desc: "Displays per-slot audit table, emits CANDIDATE-2026-10-30.2 events, and outlines ICT fixed-camera fine-tuning.",
         module: "src/parking_occupancy/events.py",
         render: () => {
           const cfg = getActiveConfig();
           const m = computeSlotMetrics(state.selectedSlotIndex);
+          if (cfg.isAreaB2) {
+            return `
+              <div class="space-y-2.5 text-xs">
+                <div class="bg-indigo-950/40 border border-indigo-800/60 p-2.5 rounded-xl text-indigo-100 text-[11px] leading-relaxed">
+                  <strong>Next Engineering Step (ICT Dataset Fine-Tuning):</strong> Pretrained <code class="text-amber-300">yolox_l.onnx</code> + <code class="text-emerald-300">midas_small.onnx</code> (280 MB downloaded on first run) validate 22/29 slots out of the box. For production occupancy, fine-tune a detector on labelled frames from the <strong>fixed ICT camera feed</strong> while keeping the one-time homography from <code class="text-cyan-300">topview_slots.py</code>.
+                </div>
+                <div class="max-h-36 overflow-y-auto custom-scrollbar rounded-xl border border-slate-800 bg-slate-950/90">
+                  <table class="w-full text-[10px] font-mono text-left">
+                    <thead class="sticky top-0 bg-slate-900 text-slate-400 uppercase border-b border-slate-800">
+                      <tr>
+                        <th class="px-2 py-1.5">Slot</th>
+                        <th class="px-2 py-1.5">Status</th>
+                        <th class="px-2 py-1.5">Box</th>
+                        <th class="px-2 py-1.5">z (Pass)</th>
+                        <th class="px-2 py-1.5">Agree</th>
+                        <th class="px-2 py-1.5">Note</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60">
+                      ${cfg.slots.map((s, idx) => {
+                        const sel = idx === state.selectedSlotIndex ? 'bg-cyan-950/60 text-cyan-200' : 'hover:bg-slate-900/70 text-slate-300';
+                        const agrCol = s.agreement === 'both' ? 'text-emerald-400' : (s.agreement === 'one' ? 'text-amber-400' : 'text-rose-400');
+                        return `
+                          <tr onclick="selectSlot(${idx})" class="cursor-pointer transition-colors ${sel}">
+                            <td class="px-2 py-1 font-bold">${s.id}</td>
+                            <td class="px-2 py-1">${s.planStatus}</td>
+                            <td class="px-2 py-1">${s.det}</td>
+                            <td class="px-2 py-1">${s.heightZ !== null ? s.heightZ + ' (' + s.depthPass + ')' : '—'}</td>
+                            <td class="px-2 py-1 font-bold ${agrCol}">${s.agreement}</td>
+                            <td class="px-2 py-1 truncate max-w-[160px]" title="${s.note}">${s.note}</td>
+                          </tr>
+                        `;
+                      }).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            `;
+          }
           return `
             <div class="space-y-3 text-xs">
               <div class="bg-emerald-950/40 border border-emerald-800/60 p-3 rounded-xl text-emerald-200">
@@ -1425,10 +2212,10 @@
       const steps = [
         "Step 1/7: Ingesting Frame & Calibrating Optics...",
         "Step 2/7: Computing Homography Reshaping (H Matrix)...",
-        "Step 3/7: Aligning Slot Coordinates & Compensating Drift...",
-        "Step 4/7: Detecting Candidate Vehicles (Low-Weight YOLO)...",
-        "Step 5/7: Contextual Area Coverage & Spillover Evaluation...",
-        "Step 6/7: Cognitive AI Fusion & 1-Minute Sliding Mean...",
+        "Step 3/7: Mapping 29 Slots (L1–11, R1–11, M1–7)...",
+        "Step 4/7: Running YOLOX-L Tiled + Far-End Zoom Crops...",
+        "Step 5/7: Fitting MiDaS-Small Ground Plane Residual...",
+        "Step 6/7: Cross-Checking Dual Models (22/29 Strong)...",
         "Step 7/7: Emitting SENTRY Space Event (CANDIDATE-2026-10-30.2)"
       ];
 
@@ -1451,11 +2238,16 @@
     function loadScene(sceneKey, name) {
       state.currentSceneKey = sceneKey;
       state.sourceName = name;
+      state.selectedSlotIndex = 0;
       const cfg = getActiveConfig();
 
       document.getElementById('camStreamTitle').textContent = `Ingested Stream (${name})`;
       document.getElementById('camResBadge').textContent = cfg.res;
       document.getElementById('camOverlayText').textContent = `Ingested: ${name}`;
+
+      if (cfg.isAreaB2) {
+        preloadB2Overlays();
+      }
 
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -1484,6 +2276,7 @@
           state.loadedImage = img;
           state.sourceName = file.name;
           state.isCustomImage = true;
+          state.selectedSlotIndex = 0;
 
           SCENE_CONFIGS['custom'] = {
             name: `Custom Ingestion (${file.name})`,
@@ -1578,11 +2371,39 @@
       }
     });
 
+    // Area B2 layer buttons
+    document.querySelectorAll('.b2-left-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.b2LeftLayer = btn.getAttribute('data-b2-layer');
+        document.querySelectorAll('.b2-left-btn').forEach(b => {
+          const active = b === btn;
+          b.className = `b2-left-btn px-2 py-1 rounded-md text-[10px] font-mono transition-all ${active ? 'bg-cyan-600 text-white font-semibold' : 'text-slate-300 hover:text-white'}`;
+        });
+        renderPerspectiveCanvas();
+      });
+    });
+
+    document.querySelectorAll('.b2-right-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.b2RightMode = btn.getAttribute('data-b2-bev');
+        document.querySelectorAll('.b2-right-btn').forEach(b => {
+          const active = b === btn;
+          b.className = `b2-right-btn px-2 py-0.5 rounded-md text-[10px] font-mono transition-all ${active ? 'bg-cyan-600 text-white font-semibold' : 'text-slate-300 hover:text-white'}`;
+        });
+        updateInspectorAndPayload();
+        renderBevCanvas();
+      });
+    });
+
     document.getElementById('scenarioSelector').addEventListener('change', (e) => {
       const val = e.target.value;
+      const rawText = e.target.options[e.target.selectedIndex].text.replace(/^(📸|🧪|📁)\s*/u, '');
       if (val.startsWith('samples/')) {
-        const name = e.target.options[e.target.selectedIndex].text.replace(/^📸\s*/, '');
-        loadScene(val, name);
+        loadScene(val, rawText);
+      } else if (val.startsWith('sim_')) {
+        // Map synthetic simulation selections to View A/B/C base with simulated fixture status
+        state.currentSceneKey = 'samples/cam_view_B.jpg';
+        loadScene('samples/cam_view_B.jpg', rawText);
       }
     });
 
@@ -1590,8 +2411,8 @@
       state.cameraMode = 'cctv';
       document.getElementById('camCctvBtn').className = 'px-2.5 py-1 rounded-md font-medium transition-all bg-cyan-600 text-white shadow-sm flex items-center gap-1.5';
       document.getElementById('camOptimizedBtn').className = 'px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-all flex items-center gap-1.5';
-      document.getElementById('metricForeshortening').textContent = '2.84x (High)';
-      document.getElementById('metricOcclusionRisk').textContent = 'Moderate (Rear Row)';
+      document.getElementById('metricForeshortening').textContent = getActiveConfig().isAreaB2 ? '31.8° Pitch (H=R·K⁻¹)' : '2.84x (High)';
+      document.getElementById('metricOcclusionRisk').textContent = getActiveConfig().isAreaB2 ? 'Far Ends Stacked (R9-10)' : 'Moderate (Rear Row)';
       renderAll();
     });
 
@@ -1674,6 +2495,12 @@
       const clickY = (e.clientY - rect.top) * (480 / rect.height);
       const cfg = getActiveConfig();
 
+      if (cfg.isAreaB2 && state.b2LeftPoints) {
+        const hit = hitTestCirclePoints(state.b2LeftPoints, clickX, clickY, 18);
+        if (hit >= 0) selectSlot(hit);
+        return;
+      }
+
       cfg.slots.forEach((s, idx) => {
         const poly = s.camPolygon;
         let inside = false;
@@ -1693,6 +2520,17 @@
       const clickY = (e.clientY - rect.top) * (480 / rect.height);
       const cfg = getActiveConfig();
 
+      if (cfg.isAreaB2) {
+        if (state.b2RightMode === 'schematic' && state.b2BevBoxes) {
+          const box = state.b2BevBoxes.find(b => clickX >= b.x && clickX <= b.x + b.w && clickY >= b.y && clickY <= b.y + b.h);
+          if (box) selectSlot(box.idx);
+        } else if (state.b2TopviewPoints) {
+          const hit = hitTestCirclePoints(state.b2TopviewPoints, clickX, clickY, 16);
+          if (hit >= 0) selectSlot(hit);
+        }
+        return;
+      }
+
       cfg.slots.forEach((s, idx) => {
         if (clickX >= s.bevRect.x && clickX <= s.bevRect.x + s.bevRect.w &&
             clickY >= s.bevRect.y && clickY <= s.bevRect.y + s.bevRect.h) {
@@ -1707,6 +2545,12 @@
       const clickY = (e.clientY - rect.top) * (300 / rect.height);
       const cfg = getActiveConfig();
 
+      if (cfg.isAreaB2 && state.b2OverheadBoxes) {
+        const box = state.b2OverheadBoxes.find(b => clickX >= b.x && clickX <= b.x + b.w && clickY >= b.y && clickY <= b.y + b.h);
+        if (box) selectSlot(box.idx);
+        return;
+      }
+
       cfg.slots.forEach((s, idx) => {
         const mapX = 35 + idx * 70;
         const mapY = 70;
@@ -1719,11 +2563,11 @@
     });
 
     // ════════════════════════════════════════════════════════════════
-    // INITIALIZATION ON LOAD
+    // INITIALIZATION ON LOAD (Default to Area B2 Dual-Model Audit)
     // ════════════════════════════════════════════════════════════════
     window.addEventListener('DOMContentLoaded', () => {
       renderAll();
-      loadScene('samples/cam_view_B.jpg', 'Campus View B (Frontal Lot B)');
+      loadScene('samples/area_b2_raw.jpg', 'Area B2 — 29 Slots (YOLOX-L + MiDaS)');
     });
   </script>
 </body>

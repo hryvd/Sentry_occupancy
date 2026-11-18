@@ -74,3 +74,17 @@ Because object detection is only a supporting sensor (not the main model), its r
 3. **Zero Identity Leakage**:
    - Detector outputs vehicle class + box coordinates only—never license plates, faces, or user UUIDs.
 
+---
+
+## 5. Area B2 Dual-Pass YOLOX-L Tiled + Far-End Zoomed Crop Strategy (`scripts/area_b2/parking_ai_check.py`)
+
+In the Area B2 audit ([`parking_ai_check.py`](../scripts/area_b2/parking_ai_check.py) & [`topview_slots.py`](../scripts/area_b2/topview_slots.py)), single-frame whole-image inference misses small vehicles at the distant edge of the `2048×1536` frame. To counter oblique scale loss using pretrained `yolox_l.onnx` (COCO vehicle classes `2=car, 3=motorcycle, 5=bus, 7=truck`):
+
+1. **Tiled Full-Image Pass (`yolox_vehicles`, gate `0.30`):**
+   - Runs full-frame inference plus 5 overlapping tiles (`(0,300,1100,1236)`, `(948,300,2048,1236)`, `(0,500,1100,1536)`, `(948,500,2048,1536)`, `(500,400,1550,1300)`) with tile-edge box clipping and OpenCV NMS (`iou=0.35`).
+2. **Zoomed $640 \times 640$ Far-End Passes (`FAR_ZOOMS`, gate `0.25`):**
+   - `far-left`: `(640, 430, 1010, 640)` — confirmed `L1–L10` present and verified **no 11th car** in `L11`.
+   - `far-right`: `(1230, 430, 1570, 640)` — surfaced ~2 dark vehicles stacked behind the silver van (`R9–R10`, marked `probable`).
+3. **Storage & Download Policy:**
+   - Binary weights (~280 MB for `yolox_l.onnx` + `midas_small.onnx`) are excluded from Git and downloaded on demand into `models/` on first script execution.
+

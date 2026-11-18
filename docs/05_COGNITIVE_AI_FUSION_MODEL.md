@@ -163,3 +163,24 @@ Suppose **Slot `A-C02`** (`slot_area = 10,000 px²`, `cctv_oblique`):
 3. **`confidence_interval`:** `[0.63, 0.93]` (moderately wide because of CCTV oblique angle + low raw YOLO score).
 4. **`one_minute_mean_confidence`:** Over the trailing 60s ($t = 0\text{s}..60\text{s}$), 58/60 valid frames averaged $\bar{p}_{60\text{s}} = 0.81$ (`window_coverage_ratio = 0.97`).
 5. **`final_call`:** `occupied` with `final_confidence = 0.81` → serialized by `events.py` with `correlation_id: null`.
+
+---
+
+## 6. Area B2 Dual-Model Cross-Check (`YOLOX-L` + `MiDaS-Small` Depth Residual)
+
+For Area B2 ([`parking_ai_check.py`](../scripts/area_b2/parking_ai_check.py) / [`parking_ai_check.csv`](../scripts/area_b2/parking_ai_check.csv)), where only a single `2048×1536` photo is available (not a labeled training dataset), two pretrained networks check each other across all **29 slots**:
+
+1. **Model A — `yolox_l.onnx` (Tiled + Zoomed Crops):** Checks whether a vehicle bounding box falls over the slot anchor (`det ∈ {0, 1}`).
+2. **Model B — `midas_small.onnx` (Monocular Relative Depth, `256×256` input):** Estimates relative inverse depth $d(x,y)$. A flat concrete ground plane $d = ax + by + c$ is fitted by least squares on bare-concrete patches (`GROUND_NEAR` and `GROUND_FAR`) after dropping $2.5\sigma$ shadow/stain outliers. Each slot anchor's residual height $z = \bar{r}_{28\times 28} / \sigma$ above concrete is classified as vehicle mass when $z \ge 4.0$.
+
+### Cross-Check Verdict Breakdown (22 / 29 Strong Agreement)
+
+| Zone | Slots | Agreement Summary | Notes |
+|---|---|---|---|
+| **Left Row** | `L1–L11` | `L1–L10`: **`both`**; `L11`: **`none`** | Zoomed far-end pass found no 11th vehicle; `L11` stays `unconfirmed`. |
+| **Right Row** | `R1–R11` | `R1–R2, R4–R8`: **`both`**; `R3, R9–R10`: **`one`**; `R11`: **`none`** | `R9–R10` dark cars stacked behind silver van (`R6`) have weak support ($z=1.8, 0.6$) → marked **`probable`**. |
+| **Middle Aisle** | `M1–M7` | `M1–M2, M5–M7`: **`both`**; `M3, M4`: **`one`** | All 7 informal vehicles detected by YOLOX; MiDaS missed `M3` ($z=1.5$) and crosswise `M4` ($z=2.4$). |
+
+### Asymmetric Trust Rule & Training Roadmap
+- **Depth is Positive-Only Evidence:** Because `MiDaS-small` is coarse, relative, and shaky past the near half of the lot, a high $z$-score confirms a vehicle (`yes`), while a low $z$-score **must never override** a valid detector box (`M3`, `M4`, `R3`) to falsely report an empty slot.
+- **Next Step (Production Fine-Tuning):** Request labeled fixed-camera frames from ICT as the supervised dataset to fine-tune the detector directly on camera coordinates, keeping the one-time homography calibration in [`topview_slots.py`](../scripts/area_b2/topview_slots.py).

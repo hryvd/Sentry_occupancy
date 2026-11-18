@@ -143,3 +143,22 @@ For every frame and every calibrated slot, Geometry provides:
 1. `bev_image` (optional/debug warped frame), active `calibration_version` + `camera_angle_type`, and baseline homography $H_0$.
 2. Each slot's `slot_number` / `space_id`, `compatibility`, baseline `polygon_bev`, and calibrated `slot_area` ($\text{px}^2$).
 3. Projected vehicle polygons $P_{\text{vehicle}, k}$ in BEV space (passed into [Module 1B: Adaptive Mapping of Slots](02B_ADAPTIVE_SLOT_MAPPING.md) for micro-drift alignment, unlined-row partitioning, effective usable polygons $P_{\text{eff}}$, and depth-stretch computation before entering **Module 2: Contextual Awareness**).
+
+---
+
+## 6. Reference Calibration: Area B2 Pinhole Pure-Rotation Homography (`scripts/area_b2/topview_slots.py`)
+
+For **Area B2** (29 mapped stalls: `L1–L11`, `R1–R11`, `M1–M7`, native frame `2048×1536`), [`topview_slots.py`](../scripts/area_b2/topview_slots.py) models a calibrated pinhole camera with pure-rotation rectification rather than unanchored 4-point clicking alone:
+
+1. **Camera Intrinsics & Orientation:**
+   - Focal length $F = 1000.0\text{ px}$ (principal point at frame center $(W/2, H/2)$).
+   - Pitch offset $A = 620.0\text{ px}$ ($\text{pitch} = \arctan(A/F) \approx 31.8^\circ$, horizon row $\approx 148$).
+   - Roll $= -7.0^\circ$, with yaw aligned from the wheel-contact axis of the reference `silver` sedan so side-on bays render left-to-right.
+2. **Pure-Rotation Homography Matrix:**
+   $$H_0 = R_{\text{down}} K^{-1}$$
+   Mapping image rays onto a virtual nadir-looking ground plane before metric scaling (`PPM = 60 px/m`, producing a `1443×1182` top-down canvas covering $24.0\text{ m} \times 19.7\text{ m}$).
+3. **Metric Scaling via Known Wheelbase (`WHEELBASE_M = 2.55`):**
+   - Ground coordinates are scaled into meters using two side-on reference cars at different depths (`silver`: $(600,1055)\leftrightarrow(879,1085)$, `vios`: $(493,677)\leftrightarrow(624,689)$).
+4. **12-Vertex Ground Region (`POLY`):**
+   - Masks out sky, trees, buildings, and bottom window ledge prior to `cv2.warpPerspective`, retaining the traversable lot concrete (`POLY`).
+   - Once verified, this pinhole homography in `topview_slots.py` is set **once per fixed camera**.
