@@ -53,14 +53,13 @@
 
     <!-- Controls -->
     <div class="flex items-center gap-2 flex-wrap">
-      <!-- Upload -->
-      <label class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow shadow-cyan-700/40">
+      <!-- Upload — uses for="fileInput" so the browser opens the OS picker natively -->
+      <label for="fileInput" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow shadow-cyan-700/40">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
         </svg>
-        <span>Upload Parking Photo</span>
-        <input type="file" id="fileInput" accept="image/*" class="hidden">
+        <span>📁 Upload Parking Photo</span>
       </label>
 
       <!-- Sample Picker -->
@@ -96,21 +95,26 @@
   </div>
 </header>
 
-<!-- ═══════════════════════════════ DROP ZONE ═══════════════════════════════ -->
+<!-- ═══════════════════════════════ DROP ZONE (native label = click always works) ═══════════════════════════════ -->
+<!-- Hidden file input lives HERE, outside any label, so JS can also programmatically trigger it -->
+<input type="file" id="fileInput" accept="image/*" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;" tabindex="-1">
+
 <div class="max-w-7xl mx-auto w-full px-4 pt-3">
-  <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-cyan-600 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 cursor-pointer transition-all">
-    <div class="flex items-center gap-3 text-xs">
+  <!-- label[for=fileInput] = clicking anywhere on this opens the OS file dialog natively, no JS needed -->
+  <label for="fileInput" id="dropZone"
+    class="block border-2 border-dashed border-slate-700 hover:border-cyan-600 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 cursor-pointer transition-all select-none">
+    <div class="flex items-center gap-3 text-xs pointer-events-none">
       <span class="text-2xl">📂</span>
       <div>
-        <span class="font-semibold text-slate-200">Drop any parking photo here</span>
-        <span class="text-slate-400 ml-2">The system will warp, detect, and analyze every parking slot.</span>
+        <span class="font-semibold text-slate-200">Click here or drop a parking photo to analyze it</span>
+        <span class="text-slate-400 ml-2">— The pipeline will warp, pixel-sample, and score every stall automatically.</span>
       </div>
     </div>
-    <div class="flex items-center gap-2 text-[11px] mono">
+    <div class="flex items-center gap-2 text-[11px] mono pointer-events-none">
       <span class="text-slate-400">Source:</span>
       <span id="sourceBadge" class="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">No photo loaded — using synthetic demo</span>
     </div>
-  </div>
+  </label>
 </div>
 
 <!-- ═══════════════════════════════ STEP PIPELINE HEADER ═══════════════════════════════ -->
@@ -1201,20 +1205,27 @@ function loadImageFromFile(file) {
 // ═══════════════════════════════════════════
 //  EVENT LISTENERS
 // ═══════════════════════════════════════════
-document.getElementById('fileInput').addEventListener('change', e => loadImageFromFile(e.target.files[0]));
+document.getElementById('fileInput').addEventListener('change', e => {
+  loadImageFromFile(e.target.files[0]);
+  e.target.value = '';   // reset so same file can be re-picked
+});
 
 document.getElementById('sampleSelect').addEventListener('change', e => {
   if (!e.target.value) return;
-  loadImageFromUrl(e.target.value, e.target.options[e.target.selectedIndex].text.replace(/^📸|🟥|🟧|🟩\s*/,'').trim());
+  const rawLabel = e.target.options[e.target.selectedIndex].text;
+  const cleanLabel = rawLabel.replace(/^[\u{1F4F8}\u{1F7E5}\u{1F7E7}\u{1F7E9}]\s*/u, '').trim();
+  loadImageFromUrl(e.target.value, cleanLabel);
   e.target.value = '';
 });
 
+// dropZone is a <label for="fileInput"> — clicking it natively opens OS file picker.
+// Do NOT add a 'click' listener that calls fileInput.click() — that causes an infinite loop.
 const dropZone = document.getElementById('dropZone');
-dropZone.addEventListener('click', () => document.getElementById('fileInput').click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drop-zone-active'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drop-zone-active'));
 dropZone.addEventListener('drop', e => {
   e.preventDefault();
+  e.stopPropagation();   // prevent label click from opening file dialog after drop
   dropZone.classList.remove('drop-zone-active');
   if (e.dataTransfer.files[0]) loadImageFromFile(e.dataTransfer.files[0]);
 });
