@@ -7,54 +7,93 @@
   <!-- Tailwind CSS via allowlisted CDN -->
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-    body {
-      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
+    :root {
+      --bg-radial: radial-gradient(circle at 50% -10%, #0c1a30 0%, #060c18 40%, #020617 100%);
     }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: var(--bg-radial);
+      background-attachment: fixed;
+    }
+    
     .font-mono {
       font-family: 'JetBrains Mono', monospace;
     }
+
+    /* Glassmorphism primitives */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+    
+    .glass-panel-hover {
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-panel-hover:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+      box-shadow: 0 12px 35px -8px rgba(6, 182, 212, 0.15);
+    }
+
+    .glass-pill {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+    }
+
+    /* Custom scrollbars */
     .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
     }
     .custom-scrollbar::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.6);
+      background: rgba(15, 23, 42, 0.4);
     }
     .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: rgba(71, 85, 105, 0.8);
-      border-radius: 3px;
+      background: rgba(71, 85, 105, 0.6);
+      border-radius: 9999px;
     }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.9);
+    }
+
+    /* Scanning radar line animation */
     @keyframes scanline {
-      0% { top: 0%; opacity: 0.8; }
+      0% { top: 0%; opacity: 0.9; }
       50% { opacity: 1; }
       100% { top: 100%; opacity: 0.1; }
     }
     .scan-line-anim {
       animation: scanline 1.6s ease-in-out infinite;
     }
-    .pulse-glow {
-      animation: pulse-glow 2s infinite ease-in-out;
+
+    /* Smooth glow */
+    .glow-cyan {
+      box-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.35);
     }
-    @keyframes pulse-glow {
-      0%, 100% { opacity: 0.9; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.02); }
+    .glow-indigo {
+      box-shadow: 0 0 20px -3px rgba(99, 102, 241, 0.35);
     }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col selection:bg-cyan-500 selection:text-white custom-scrollbar relative">
+<body class="text-slate-100 min-h-screen antialiased flex flex-col selection:bg-cyan-500 selection:text-slate-950 custom-scrollbar relative">
 
   <!-- GLOBAL DRAG & DROP OVERLAY -->
-  <div id="globalDropOverlay" class="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center border-4 border-dashed border-cyan-400 hidden pointer-events-none transition-all">
-    <div class="p-8 rounded-3xl bg-slate-900/95 border border-cyan-500/50 shadow-2xl shadow-cyan-500/20 text-center flex flex-col items-center gap-4 max-w-md">
-      <div class="w-20 h-20 rounded-2xl bg-cyan-950 border border-cyan-500/80 flex items-center justify-center text-4xl animate-bounce">
+  <div id="globalDropOverlay" class="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center border-2 border-dashed border-cyan-400/80 hidden pointer-events-none transition-all">
+    <div class="p-8 rounded-3xl glass-panel text-center flex flex-col items-center gap-4 max-w-md glow-cyan">
+      <div class="w-16 h-16 rounded-2xl bg-cyan-950/80 border border-cyan-500/60 flex items-center justify-center text-3xl animate-bounce">
         📸
       </div>
       <div>
-        <div class="text-xl font-bold text-white tracking-wide">Drop Parking Photo Here</div>
-        <div class="text-xs text-cyan-300 font-mono mt-1">Accepts JPG, PNG, WEBP — Will run 7-step analysis automatically</div>
+        <div class="text-lg font-bold text-white tracking-wide">Drop Parking Photo Here</div>
+        <div class="text-xs text-cyan-300 font-mono mt-1">Accepts JPG, PNG, WEBP — Auto-calibrates 7-step pipeline</div>
       </div>
-      <div class="text-[11px] text-slate-400">Homography warping • Pixel variance & edge density • Cognitive AI fusion</div>
+      <div class="text-[11px] text-slate-400">Homography warping • Pixel analysis • Cognitive AI fusion</div>
     </div>
   </div>
 
@@ -62,83 +101,84 @@
   <input type="file" id="photoFileInput" accept="image/*" class="hidden" style="display:none;" />
 
   <!-- TOP APP BAR -->
-  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3">
+  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-50 px-5 py-3">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
       
       <!-- Brand & Title -->
-      <div class="flex items-center gap-3">
-        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400/30">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="flex items-center gap-3.5">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 ring-1 ring-white/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
           </svg>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
-              SENTRY <span class="text-cyan-400">Occupancy Vision</span>
+            <h1 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+              SENTRY <span class="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Vision OS</span>
             </h1>
-            <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
-              BSU Campus Lots A–D
+            <span class="text-[9px] font-mono tracking-wider uppercase px-2 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 font-semibold">
+              BSU Lots A–D
             </span>
-            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
-              MOCK BACKEND
+            <span class="text-[9px] font-mono tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-semibold flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live Mock
             </span>
           </div>
-          <p class="text-xs text-slate-400">Photo Ingestion • Homography Warping • Adaptive Mapping • Cognitive Fusion</p>
+          <p class="text-[11px] text-slate-400">Homography Warping • Adaptive Mapping • Cognitive AI Fusion</p>
         </div>
       </div>
 
-      <!-- Controls: Ingest Photo, Scenario Selector & Camera Mode -->
-      <div class="flex items-center gap-3 flex-wrap">
+      <!-- Controls Header Area -->
+      <div class="flex items-center gap-2.5 flex-wrap">
         
         <!-- INGEST CUSTOM PHOTO BUTTON -->
-        <button id="btnIngestPhoto" type="button" class="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow-md shadow-cyan-600/30 active:scale-95">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="btnIngestPhoto" type="button" class="px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-200 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all hover:border-cyan-400 hover:text-white active:scale-95 glow-cyan">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <span id="btnIngestLabel">Ingest Custom Photo</span>
+          <span id="btnIngestLabel">Ingest Photo</span>
         </button>
 
-        <!-- Scenario / Source Preset -->
-        <div class="flex items-center gap-1.5 bg-slate-800/80 rounded-lg p-1 border border-slate-700 text-xs">
-          <span class="text-slate-400 px-2 font-medium">Source / Scene:</span>
-          <select id="scenarioSelector" class="bg-slate-900 text-slate-200 border-none rounded px-2.5 py-1 text-xs focus:ring-1 focus:ring-cyan-500 font-medium cursor-pointer">
-            <optgroup label="📸 Campus Cameras (Real Lot Photos)">
+        <!-- Scenario / Source Selector -->
+        <div class="flex items-center glass-pill rounded-lg px-2 py-1 text-xs">
+          <span class="text-slate-400 text-[11px] font-mono mr-1.5">View:</span>
+          <select id="scenarioSelector" class="bg-transparent text-slate-200 border-none rounded py-0.5 text-xs focus:ring-0 font-medium cursor-pointer outline-none">
+            <optgroup label="📸 Campus Cameras (Real Lot Photos)" class="bg-slate-900 text-slate-200">
               <option value="samples/cam_view_A.jpg">📸 Campus View A (Oblique Lot A)</option>
               <option value="samples/cam_view_B.jpg" selected>📸 Campus View B (Frontal Lot B)</option>
               <option value="samples/cam_view_C.jpg">📸 Campus View C (Overhead Lot C)</option>
             </optgroup>
-            <optgroup label="🧪 Synthetic Simulation Scenarios">
+            <optgroup label="🧪 Synthetic Simulation Scenarios" class="bg-slate-900 text-slate-200">
               <option value="sim_normal">1. Normal Partial Occupancy</option>
               <option value="sim_spillover">2. Bad Park: Neighbor Spillover</option>
               <option value="sim_occlusion">3. CCTV Oblique Occlusion</option>
               <option value="sim_drift">4. Camera Micro-Drift Vibration</option>
               <option value="sim_empty">5. Baseline Empty Lot</option>
             </optgroup>
-            <optgroup label="📁 Custom Ingestion" id="customOptGroup" class="hidden">
+            <optgroup label="📁 Custom Ingestion" id="customOptGroup" class="hidden bg-slate-900 text-slate-200">
               <option value="custom" id="customOpt">Ingested Photo</option>
             </optgroup>
           </select>
         </div>
 
-        <!-- Camera Type Toggle -->
-        <div class="flex items-center bg-slate-800/80 rounded-lg p-0.5 border border-slate-700 text-xs">
-          <button id="camCctvBtn" class="px-3 py-1.5 rounded-md font-medium transition-colors bg-cyan-600 text-white shadow-sm flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-cyan-200 animate-pulse"></span>
-            CCTV Oblique (45°)
+        <!-- Camera Type Toggle (Segmented Pill) -->
+        <div class="flex items-center glass-pill rounded-lg p-0.5 text-xs">
+          <button id="camCctvBtn" class="px-2.5 py-1 rounded-md font-medium transition-all bg-cyan-600 text-white shadow-sm flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-200 animate-pulse"></span>
+            CCTV 45°
           </button>
-          <button id="camOptimizedBtn" class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5">
-            Optimized Angle (80°)
+          <button id="camOptimizedBtn" class="px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-all flex items-center gap-1.5">
+            Nadir 80°
           </button>
         </div>
 
         <!-- Autoplay Steps Button -->
-        <button id="autoplayBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/30 active:scale-95">
-          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+        <button id="autoplayBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 border border-indigo-400/40 text-white text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 glow-indigo">
+          <svg class="w-3.5 h-3.5 text-indigo-200" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
           </svg>
-          <span id="autoplayBtnText">Play Pipeline (Auto)</span>
+          <span id="autoplayBtnText">Play Pipeline</span>
         </button>
 
       </div>
@@ -146,55 +186,49 @@
   </header>
 
   <!-- MAIN CONTAINER -->
-  <main class="max-w-7xl mx-auto w-full p-4 flex-1 flex flex-col gap-5">
+  <main class="max-w-7xl mx-auto w-full p-4 flex-1 flex flex-col gap-4">
     
-    <!-- TOP SECTION: STEPPER TABS -->
-    <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-2.5 backdrop-blur shadow-sm">
-      <div class="flex items-center justify-between gap-2 overflow-x-auto custom-scrollbar pb-1">
-        <div class="flex items-center gap-1.5 text-xs font-medium" id="stepperContainer">
-          <!-- Step 1 -->
-          <button data-step="1" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold shadow-sm">
-            <span class="w-5 h-5 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center text-[11px] font-bold">1</span>
-            <span>Raw Ingestion</span>
+    <!-- TOP SECTION: STEPPER PROGRESS BAR -->
+    <div class="glass-panel rounded-2xl p-2 shadow-lg">
+      <div class="flex items-center justify-between gap-2 overflow-x-auto custom-scrollbar">
+        <div class="flex items-center gap-1 text-xs font-medium" id="stepperContainer">
+          <!-- Steps 1 to 7 -->
+          <button data-step="1" class="step-btn px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold shadow-sm">
+            <span class="w-5 h-5 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center text-[10px] font-bold">1</span>
+            <span class="text-[11px]">Raw Ingestion</span>
           </button>
-          <!-- Step 2 -->
-          <button data-step="2" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
-            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">2</span>
-            <span>Homography Reshaping</span>
+          <button data-step="2" class="step-btn px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">2</span>
+            <span class="text-[11px]">Homography Warp</span>
           </button>
-          <!-- Step 3 -->
-          <button data-step="3" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
-            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">3</span>
-            <span>Adaptive Slot Mapping</span>
+          <button data-step="3" class="step-btn px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">3</span>
+            <span class="text-[11px]">Adaptive Slots</span>
           </button>
-          <!-- Step 4 -->
-          <button data-step="4" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
-            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">4</span>
-            <span>Low-Weight YOLO</span>
+          <button data-step="4" class="step-btn px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">4</span>
+            <span class="text-[11px]">YOLO Support</span>
           </button>
-          <!-- Step 5 -->
-          <button data-step="5" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
-            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">5</span>
-            <span>Contextual Area Analysis</span>
+          <button data-step="5" class="step-btn px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">5</span>
+            <span class="text-[11px]">Contextual Area</span>
           </button>
-          <!-- Step 6 -->
-          <button data-step="6" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
-            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">6</span>
-            <span>Cognitive AI Fusion</span>
+          <button data-step="6" class="step-btn px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">6</span>
+            <span class="text-[11px]">Cognitive Fusion</span>
           </button>
-          <!-- Step 7 -->
-          <button data-step="7" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
-            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">7</span>
-            <span>Overhead Map & Event</span>
+          <button data-step="7" class="step-btn px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">7</span>
+            <span class="text-[11px]">Overhead & Event</span>
           </button>
         </div>
 
         <!-- Navigation Next/Prev buttons -->
         <div class="flex items-center gap-1.5 shrink-0">
-          <button id="prevStepBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold disabled:opacity-40 transition-colors">
+          <button id="prevStepBtn" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-semibold disabled:opacity-30 transition-colors">
             ◀ Prev
           </button>
-          <button id="nextStepBtn" class="px-2.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold disabled:opacity-40 transition-colors">
+          <button id="nextStepBtn" class="px-2.5 py-1 rounded-lg bg-cyan-600/90 hover:bg-cyan-500 text-white text-xs font-semibold disabled:opacity-30 transition-colors">
             Next ▶
           </button>
         </div>
@@ -202,197 +236,210 @@
     </div>
 
     <!-- MIDDLE DUAL-VIEWPORT SECTION -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
       
       <!-- LEFT VIEWPORT: CAMERA PERSPECTIVE STREAM -->
-      <div class="lg:col-span-6 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
-        <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
+      <div class="lg:col-span-6 glass-panel glass-panel-hover rounded-2xl p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800/60">
           <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
-            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300" id="camStreamTitle">
-              Ingested Frame / Perspective Stream (Campus View B)
+            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-200" id="camStreamTitle">
+              Ingested Frame / Perspective Stream
             </h2>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="text-[11px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded" id="camFpsBadge">25.0 FPS</span>
-            <span class="text-[11px] font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/50" id="camResBadge">4032x3024</span>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-mono text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded" id="camFpsBadge">25.0 FPS</span>
+            <span class="text-[10px] font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/50" id="camResBadge">4032×3024</span>
           </div>
         </div>
 
         <!-- Perspective Canvas Container -->
-        <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 aspect-[4/3] flex items-center justify-center shadow-inner group">
+        <div class="relative bg-slate-950/90 rounded-xl overflow-hidden border border-slate-800/80 aspect-[4/3] flex items-center justify-center shadow-inner group">
           <canvas id="cameraCanvas" width="640" height="480" class="w-full h-full object-contain cursor-crosshair"></canvas>
           
+          <!-- Modern Perception Reticle Corner Brackets (Tesla/Autonomous HUD style) -->
+          <div class="absolute inset-2 pointer-events-none opacity-40">
+            <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-400"></div>
+            <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-400"></div>
+            <div class="absolute bottom-10 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-400"></div>
+            <div class="absolute bottom-10 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-400"></div>
+          </div>
+
           <!-- Animated Radar Scan Line during analysis -->
           <div id="scanOverlay" class="absolute inset-0 pointer-events-none hidden">
             <div class="scan-line-anim absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#06b6d4]"></div>
-            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/40 backdrop-blur-[2px]">
-              <div class="bg-slate-900/90 border border-cyan-500/80 rounded-2xl px-6 py-4 flex flex-col items-center gap-2 shadow-2xl shadow-cyan-500/30">
+            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/50 backdrop-blur-[2px]">
+              <div class="glass-panel rounded-2xl px-6 py-4 flex flex-col items-center gap-2 shadow-2xl glow-cyan">
                 <div class="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin"></div>
-                <div class="text-cyan-300 font-bold text-xs font-mono uppercase tracking-widest mt-1">Analyzing Ingested Photo</div>
+                <div class="text-cyan-300 font-bold text-xs font-mono uppercase tracking-widest mt-1">Analyzing Frame</div>
                 <div id="scanProgressText" class="text-[11px] font-mono text-slate-300">Step 1/7: Ingesting Frame...</div>
               </div>
             </div>
           </div>
 
           <!-- Interactive overlay hints -->
-          <div id="camOverlayBadge" class="absolute top-2 left-2 px-2.5 py-1 rounded bg-slate-900/85 backdrop-blur border border-slate-700 text-[11px] text-slate-300 font-mono pointer-events-none flex items-center gap-1.5 shadow">
-            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <div id="camOverlayBadge" class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-md glass-pill text-[10px] text-slate-300 font-mono pointer-events-none flex items-center gap-1.5 shadow-sm">
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
             <span id="camOverlayText">Perspective: 45° Pitch • Trapezoidal Distortion</span>
           </div>
 
           <!-- Quick Drop Prompt on Canvas -->
-          <div class="absolute top-2 right-2 px-2 py-1 rounded bg-slate-900/80 text-[10px] text-slate-400 font-mono border border-slate-800 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-            Drag & Drop photo here
+          <div class="absolute top-2.5 right-2.5 px-2 py-1 rounded-md glass-pill text-[10px] text-slate-400 font-mono pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+            Drop photo to analyze
           </div>
 
-          <!-- Interactive Stall Navigation Bar (Replaces fake cartoon slider) -->
-          <div class="absolute bottom-2 inset-x-2 bg-slate-900/90 backdrop-blur border border-slate-700/80 rounded-lg p-2 flex items-center justify-between text-xs">
+          <!-- Interactive Stall Navigation Bar (Capsule Carousel) -->
+          <div class="absolute bottom-2 inset-x-2 glass-pill rounded-lg px-2.5 py-1.5 flex items-center justify-between text-xs">
             <div class="flex items-center gap-2">
-              <span class="text-[11px] font-mono text-slate-300">Select Slot to Inspect:</span>
-              <div id="slotPillList" class="flex items-center gap-1">
-                <!-- Dynamically filled with slot buttons -->
+              <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Bays:</span>
+              <div id="slotPillList" class="flex items-center gap-1.5 overflow-x-auto">
+                <!-- Dynamically filled with slot capsules -->
               </div>
             </div>
-            <span class="text-[10px] font-mono text-cyan-400" id="slotStatusReadout">6 Bays Calibrated</span>
+            <span class="text-[10px] font-mono text-cyan-400 hidden sm:inline" id="slotStatusReadout">6 Stalls Active</span>
           </div>
         </div>
 
-        <!-- Perspective Sub-metrics -->
-        <div class="grid grid-cols-3 gap-2 text-xs pt-1">
-          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
-            <div class="text-slate-400 text-[10px] uppercase font-mono">Foreshortening Factor</div>
+        <!-- Perspective Sub-metrics (Sleek cards with top accent bar) -->
+        <div class="grid grid-cols-3 gap-2 text-xs">
+          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 relative overflow-hidden">
+            <div class="absolute top-0 inset-x-0 h-0.5 bg-cyan-500/40"></div>
+            <div class="text-slate-400 text-[9px] uppercase tracking-wider font-mono">Foreshortening</div>
             <div class="text-slate-200 font-bold font-mono text-sm mt-0.5" id="metricForeshortening">2.84x (High)</div>
           </div>
-          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
-            <div class="text-slate-400 text-[10px] uppercase font-mono">Occlusion Risk</div>
+          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 relative overflow-hidden">
+            <div class="absolute top-0 inset-x-0 h-0.5 bg-amber-500/40"></div>
+            <div class="text-slate-400 text-[9px] uppercase tracking-wider font-mono">Occlusion Risk</div>
             <div class="text-amber-400 font-bold font-mono text-sm mt-0.5" id="metricOcclusionRisk">Moderate (Rear Row)</div>
           </div>
-          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
-            <div class="text-slate-400 text-[10px] uppercase font-mono">Ground Quad Error</div>
+          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 relative overflow-hidden">
+            <div class="absolute top-0 inset-x-0 h-0.5 bg-emerald-500/40"></div>
+            <div class="text-slate-400 text-[9px] uppercase tracking-wider font-mono">Ground Quad Error</div>
             <div class="text-emerald-400 font-bold font-mono text-sm mt-0.5" id="metricQuadError">RMS &lt; 0.42 px</div>
           </div>
         </div>
       </div>
 
       <!-- RIGHT VIEWPORT: HOMOGRAPHY BEV / WARPED PLANE -->
-      <div class="lg:col-span-6 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
-        <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
+      <div class="lg:col-span-6 glass-panel glass-panel-hover rounded-2xl p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800/60">
           <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
-            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300">
-              Bird's-Eye View (BEV) — Homography Warped Ground Plane
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-200">
+              Bird's-Eye View (BEV) — Homography Rectified Plane
             </h2>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50" id="driftBadge">
-              ΔH: (dx=0.8, dy=-0.4) OK
+            <span class="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50" id="driftBadge">
+              ΔH: OK (0.89px)
             </span>
           </div>
         </div>
 
         <!-- BEV Canvas Container -->
-        <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 aspect-[4/3] flex items-center justify-center shadow-inner">
+        <div class="relative bg-slate-950/90 rounded-xl overflow-hidden border border-slate-800/80 aspect-[4/3] flex items-center justify-center shadow-inner">
           <canvas id="bevCanvas" width="640" height="480" class="w-full h-full object-contain cursor-pointer"></canvas>
           
-          <div id="bevOverlayBadge" class="absolute top-2 left-2 px-2.5 py-1 rounded bg-slate-900/80 backdrop-blur border border-slate-700 text-[11px] text-slate-300 font-mono pointer-events-none">
+          <div id="bevOverlayBadge" class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-md glass-pill text-[10px] text-slate-300 font-mono pointer-events-none">
             Rectified Metric Grid (1px ≈ 1.25cm)
           </div>
 
-          <div class="absolute top-2 right-2 flex gap-1.5">
-            <button id="toggleGridBtn" class="px-2 py-1 rounded bg-slate-800/90 hover:bg-slate-700 text-[10px] font-mono text-slate-300 border border-slate-700 transition-colors">
+          <div class="absolute top-2.5 right-2.5 flex gap-1.5">
+            <button id="toggleGridBtn" class="px-2 py-1 rounded-md glass-pill text-[10px] font-mono text-slate-300 hover:text-white transition-colors">
               Grid: ON
             </button>
-            <button id="toggleWarpBtn" class="px-2 py-1 rounded bg-cyan-900/80 hover:bg-cyan-800 text-[10px] font-mono text-cyan-200 border border-cyan-700 transition-colors">
+            <button id="toggleWarpBtn" class="px-2 py-1 rounded-md glass-pill text-[10px] font-mono text-cyan-300 hover:text-white transition-colors">
               Warped Plane: ON
             </button>
           </div>
         </div>
 
         <!-- BEV Sub-metrics -->
-        <div class="grid grid-cols-3 gap-2 text-xs pt-1">
-          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
-            <div class="text-slate-400 text-[10px] uppercase font-mono">Calibrated Slot Area</div>
-            <div class="text-slate-200 font-bold font-mono text-sm mt-0.5" id="metricSlotArea">12.50 m² (10,000 px²)</div>
+        <div class="grid grid-cols-3 gap-2 text-xs">
+          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 relative overflow-hidden">
+            <div class="absolute top-0 inset-x-0 h-0.5 bg-blue-500/40"></div>
+            <div class="text-slate-400 text-[9px] uppercase tracking-wider font-mono">Calibrated Bay Area</div>
+            <div class="text-slate-200 font-bold font-mono text-sm mt-0.5" id="metricSlotArea">12.50 m² (10k px²)</div>
           </div>
-          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
-            <div class="text-slate-400 text-[10px] uppercase font-mono">Anchor Fiducial Drift</div>
-            <div class="text-emerald-400 font-bold font-mono text-sm mt-0.5" id="metricDriftVal">0.89 px (&lt; 5.0 px)</div>
+          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 relative overflow-hidden">
+            <div class="absolute top-0 inset-x-0 h-0.5 bg-emerald-500/40"></div>
+            <div class="text-slate-400 text-[9px] uppercase tracking-wider font-mono">Anchor Drift (ΔH)</div>
+            <div class="text-emerald-400 font-bold font-mono text-sm mt-0.5" id="metricDriftVal">0.89 px (&lt; 5.0)</div>
           </div>
-          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
-            <div class="text-slate-400 text-[10px] uppercase font-mono">Curb / Row Partition</div>
-            <div class="text-cyan-400 font-bold font-mono text-sm mt-0.5" id="metricPartition">Uniform (6 bays)</div>
+          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 relative overflow-hidden">
+            <div class="absolute top-0 inset-x-0 h-0.5 bg-cyan-500/40"></div>
+            <div class="text-slate-400 text-[9px] uppercase tracking-wider font-mono">Partition Model</div>
+            <div class="text-cyan-400 font-bold font-mono text-sm mt-0.5" id="metricPartition">Uniform (6 Bays)</div>
           </div>
         </div>
       </div>
 
     </div>
 
-    <!-- BOTTOM SECTION: STEP-BY-STEP DETAIL & FINAL OVERHEAD LOT MAP -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+    <!-- BOTTOM SECTION: STEP INSPECTOR & OVERHEAD CAMPUS MAP -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
       
       <!-- DETAILED STEP INSPECTOR CARD -->
-      <div class="lg:col-span-7 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-lg">
+      <div class="lg:col-span-7 glass-panel rounded-2xl p-4 flex flex-col gap-3.5 shadow-lg">
         
-        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800/60">
           <div>
             <div class="flex items-center gap-2">
-              <span class="w-6 h-6 rounded-lg bg-cyan-500 text-slate-950 font-black text-xs flex items-center justify-center" id="stepDetailNumber">1</span>
+              <span class="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold text-xs flex items-center justify-center" id="stepDetailNumber">1</span>
               <h3 class="font-bold text-sm text-white" id="stepDetailTitle">Step 1 — Dual-Source Ingestion & Stream Resolution</h3>
             </div>
-            <p class="text-xs text-slate-400 mt-0.5" id="stepDetailDesc">
+            <p class="text-[11px] text-slate-400 mt-0.5" id="stepDetailDesc">
               Ingests raw RTSP frames from campus CCTV vs. optimized overhead sensor mounts.
             </p>
           </div>
-          <span class="text-xs font-mono px-2.5 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700" id="stepModuleTag">
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60" id="stepModuleTag">
             src/parking_occupancy/capture.py
           </span>
         </div>
 
         <!-- Dynamic Step Content Body -->
-        <div id="stepDynamicContent" class="space-y-4">
+        <div id="stepDynamicContent" class="space-y-3">
           <!-- Populated by JavaScript according to current active step -->
         </div>
 
       </div>
 
       <!-- FINAL OVERHEAD CAMPUS PARKING MAP & REAL-TIME EVENT CARD -->
-      <div class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-lg">
+      <div class="lg:col-span-5 glass-panel rounded-2xl p-4 flex flex-col gap-3.5 shadow-lg">
         
         <!-- Header -->
-        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800/60">
           <div class="flex items-center gap-2">
-            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
-            <h3 class="font-bold text-sm text-white">Final Campus Overhead Map (BEV)</h3>
+            <h3 class="font-bold text-sm text-white">Campus Overhead Map</h3>
           </div>
-          <span class="text-xs font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">
-            Interactive (Click Slot)
+          <span class="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/60">
+            Click Slot to Inspect
           </span>
         </div>
 
         <!-- Overhead Canvas Map -->
-        <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 aspect-[16/10] flex items-center justify-center shadow-inner">
+        <div class="relative bg-slate-950/90 rounded-xl overflow-hidden border border-slate-800/80 aspect-[16/10] flex items-center justify-center shadow-inner">
           <canvas id="overheadMapCanvas" width="480" height="300" class="w-full h-full object-contain cursor-pointer"></canvas>
           
-          <div class="absolute bottom-2 left-2 bg-slate-900/90 backdrop-blur px-2 py-1 rounded text-[10px] text-slate-300 font-mono border border-slate-700/80 flex items-center gap-2">
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Avail</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Occ</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Spill</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Unk</span>
+          <div class="absolute bottom-2 left-2 glass-pill px-2 py-1 rounded text-[9px] text-slate-300 font-mono flex items-center gap-2">
+            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Available</span>
+            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Occupied</span>
+            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span> Spillover</span>
           </div>
         </div>
 
         <!-- Real-Time Slot Inspector Readout -->
-        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+        <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 text-xs space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-slate-400 font-medium">Inspected Slot:</span>
             <span class="font-bold font-mono text-cyan-300 text-sm" id="inspectorSlotId">Slot B-01</span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
             <span class="text-slate-400">Compatibility & Dimensions:</span>
-            <span class="font-mono text-slate-200" id="inspectorCompat">car_only • 2.5m x 5.0m</span>
+            <span class="font-mono text-slate-200" id="inspectorCompat">car_only • 2.5m × 5.0m</span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
             <span class="text-slate-400">Consumed Area (ρ) / Remaining:</span>
@@ -406,7 +453,7 @@
             <span class="text-slate-400">1-Minute Sliding Mean (p̄₆₀ₛ):</span>
             <span class="font-mono text-cyan-300 font-bold" id="inspectorMeanVal">0.942</span>
           </div>
-          <div class="flex items-center justify-between pt-1 border-t border-slate-800">
+          <div class="flex items-center justify-between pt-1 border-t border-slate-800/80">
             <span class="text-slate-400 font-medium">Final Call Decision:</span>
             <span class="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-rose-950 text-rose-300 border border-rose-800" id="inspectorFinalBadge">
               OCCUPIED
@@ -414,13 +461,16 @@
           </div>
         </div>
 
-        <!-- SENTRY Event Payload Preview -->
-        <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 text-xs flex flex-col gap-1.5">
+        <!-- SENTRY Event Payload Preview with Copy Button -->
+        <div class="bg-slate-950/80 border border-slate-800/80 rounded-xl p-3 text-xs flex flex-col gap-1.5 relative">
           <div class="flex items-center justify-between text-[10px] uppercase font-mono text-slate-400">
-            <span>Dispatched Schema (CANDIDATE-2026-10-30.2)</span>
-            <span class="text-emerald-400 font-semibold">MOCK DISPATCH OK</span>
+            <span>SENTRY Schema (CANDIDATE-2026-10-30.2)</span>
+            <button id="copyJsonBtn" class="text-cyan-400 hover:text-white flex items-center gap-1 transition-colors">
+              <span>📋 Copy JSON</span>
+              <span id="copyFeedback" class="text-emerald-400 hidden">✔</span>
+            </button>
           </div>
-          <pre id="eventJsonPreview" class="bg-slate-900/90 text-slate-300 p-2.5 rounded-lg text-[10px] font-mono overflow-x-auto custom-scrollbar border border-slate-800">
+          <pre id="eventJsonPreview" class="bg-slate-900/90 text-slate-300 p-2.5 rounded-lg text-[10px] font-mono overflow-x-auto custom-scrollbar border border-slate-800/80">
 {
   "schema_version": "2026-10-30.2",
   "event_type": "space_state_changed",
@@ -451,7 +501,7 @@
         name: 'Campus View B (Frontal Lot B)',
         lot: 'B',
         camId: 'cam-lot-b-01',
-        res: '4032x3024',
+        res: '4032×3024',
         pitch: '40° Frontal Oblique',
         groundQuad: {
           src: [[130, 230], [560, 230], [610, 440], [40, 440]],
@@ -502,7 +552,7 @@
         name: 'Campus View A (Oblique Lot A)',
         lot: 'A',
         camId: 'cam-lot-a-01',
-        res: '4032x3024',
+        res: '4032×3024',
         pitch: '45° High Oblique',
         groundQuad: {
           src: [[140, 200], [530, 200], [610, 420], [30, 420]],
@@ -553,7 +603,7 @@
         name: 'Campus View C (Overhead Lot C)',
         lot: 'C',
         camId: 'cam-lot-c-01',
-        res: '4032x3024',
+        res: '4032×3024',
         pitch: '50° Lateral High Angle',
         groundQuad: {
           src: [[80, 220], [540, 220], [600, 440], [40, 440]],
@@ -619,17 +669,15 @@
       confidenceHistory: Array.from({length: 60}, () => 0.93 + Math.random() * 0.04)
     };
 
-    // Get Active Scene Config
     function getActiveConfig() {
       if (SCENE_CONFIGS[state.currentSceneKey]) {
         return SCENE_CONFIGS[state.currentSceneKey];
       }
-      // Fallback for custom or simulation
       return SCENE_CONFIGS['samples/cam_view_B.jpg'];
     }
 
     // ════════════════════════════════════════════════════════════════
-    // REAL HOMOGRAPHY WARP ENGINE (Mesh-based Piecewise Affine Warp)
+    // REAL HOMOGRAPHY WARP ENGINE (Mesh Piecewise Affine Warp)
     // ════════════════════════════════════════════════════════════════
     function warpQuadToCanvas(ctx, img, srcQuad, dstQuad, gridDivs = 8) {
       if (!img || !img.complete) return;
@@ -639,18 +687,15 @@
       const scaleX = sw / 640;
       const scaleY = sh / 480;
 
-      // Scale source quad points into original image coordinate space
       const sP = srcQuad.map(p => ({ x: p[0] * scaleX, y: p[1] * scaleY }));
       const dP = dstQuad.map(p => ({ x: p[0], y: p[1] }));
 
-      // Bilinear interpolation for quad surface
       function bilerp(quad, u, v) {
         const x = (1-u)*(1-v)*quad[0].x + u*(1-v)*quad[1].x + u*v*quad[2].x + (1-u)*v*quad[3].x;
         const y = (1-u)*(1-v)*quad[0].y + u*(1-v)*quad[1].y + u*v*quad[2].y + (1-u)*v*quad[3].y;
         return { x, y };
       }
 
-      // Draw single affine warped triangle
       function drawTriangle(s0, s1, s2, d0, d1, d2) {
         ctx.save();
         ctx.beginPath();
@@ -660,7 +705,6 @@
         ctx.closePath();
         ctx.clip();
 
-        // Exact 3-point affine transformation matrix
         const det = s0.x*(s1.y - s2.y) + s1.x*(s2.y - s0.y) + s2.x*(s0.y - s1.y);
         if (Math.abs(det) < 0.00001) { ctx.restore(); return; }
 
@@ -677,7 +721,6 @@
         ctx.restore();
       }
 
-      // Subdivide quad into N x N cells, each split into 2 triangles
       const N = gridDivs;
       for (let j = 0; j < N; j++) {
         for (let i = 0; i < N; i++) {
@@ -694,9 +737,7 @@
           const d11 = bilerp(dP, u1, v1);
           const d01 = bilerp(dP, u0, v1);
 
-          // Triangle 1
           drawTriangle(s00, s10, s11, d00, d10, d11);
-          // Triangle 2
           drawTriangle(s00, s11, s01, d00, d11, d01);
         }
       }
@@ -753,29 +794,28 @@
         ctx.drawImage(state.loadedImage, 0, 0, w, h);
       } else {
         const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-        bgGrad.addColorStop(0, '#1e293b');
-        bgGrad.addColorStop(1, '#0f172a');
+        bgGrad.addColorStop(0, '#0f172a');
+        bgGrad.addColorStop(1, '#020617');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, w, h);
       }
 
-      // STEP 1: RAW INGESTION (Show frame clean with guide overlay)
+      // STEP 1: RAW INGESTION (Show subtle crosshairs)
       if (step === 1) {
-        // Optical center crosshairs
         ctx.strokeStyle = 'rgba(6, 182, 212, 0.4)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(w/2 - 20, h/2); ctx.lineTo(w/2 + 20, h/2);
-        ctx.moveTo(w/2, h/2 - 20); ctx.lineTo(w/2, h/2 + 20);
+        ctx.moveTo(w/2 - 25, h/2); ctx.lineTo(w/2 + 25, h/2);
+        ctx.moveTo(w/2, h/2 - 25); ctx.lineTo(w/2, h/2 + 25);
         ctx.stroke();
         return;
       }
 
-      // STEP 2+: DRAW HOMOGRAPHY GROUND QUAD (Cyan polygon)
+      // STEP 2+: DRAW HOMOGRAPHY GROUND QUAD (Polished Cyan Wireframe)
       const pts = cfg.groundQuad.src;
       ctx.strokeStyle = '#06b6d4';
       ctx.lineWidth = 2;
-      ctx.fillStyle = (step === 2) ? 'rgba(6, 182, 212, 0.18)' : 'rgba(6, 182, 212, 0.05)';
+      ctx.fillStyle = (step === 2) ? 'rgba(6, 182, 212, 0.16)' : 'rgba(6, 182, 212, 0.05)';
       ctx.beginPath();
       ctx.moveTo(pts[0][0], pts[0][1]);
       ctx.lineTo(pts[1][0], pts[1][1]);
@@ -785,18 +825,21 @@
       ctx.fill();
       ctx.stroke();
 
-      // Corner Anchors
+      // Corner Crosshair Markers
       pts.forEach((p, i) => {
-        ctx.fillStyle = '#06b6d4';
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(p[0], p[1], 4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+        ctx.fillRect(p[0] + 6, p[1] - 14, 22, 14);
         ctx.fillStyle = '#ffffff';
-        ctx.font = '10px JetBrains Mono';
-        ctx.fillText(`P${i}`, p[0] + 6, p[1] - 4);
+        ctx.font = 'bold 9px JetBrains Mono';
+        ctx.fillText(`P${i}`, p[0] + 10, p[1] - 4);
       });
 
-      // STEP 3+: DRAW CALIBRATED STALL BOUNDARY POLYGONS
+      // STEP 3+: CALIBRATED STALL BOUNDARY POLYGONS
       if (step >= 3) {
         cfg.slots.forEach((s, idx) => {
           const isSelected = (idx === state.selectedSlotIndex);
@@ -810,52 +853,64 @@
           }
           ctx.closePath();
 
-          // Stroke & Fill
           const strokeColor = isOcc ? '#f43f5e' : '#10b981';
           ctx.strokeStyle = isSelected ? '#38bdf8' : strokeColor;
-          ctx.lineWidth = isSelected ? 3 : 2;
-          ctx.fillStyle = isOcc ? 'rgba(244, 63, 94, 0.18)' : 'rgba(16, 185, 129, 0.15)';
+          ctx.lineWidth = isSelected ? 3 : 1.75;
+          ctx.fillStyle = isOcc ? 'rgba(244, 63, 94, 0.18)' : 'rgba(16, 185, 129, 0.14)';
           ctx.fill();
           ctx.stroke();
 
-          // Stall ID Badge
+          // Stall ID pill tag
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.fillRect(poly[0][0] + 2, poly[0][1] - 16, 44, 15);
+          ctx.strokeStyle = isSelected ? '#38bdf8' : strokeColor;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(poly[0][0] + 2, poly[0][1] - 16, 44, 15);
+
           ctx.fillStyle = isSelected ? '#38bdf8' : '#ffffff';
-          ctx.font = 'bold 11px JetBrains Mono';
-          ctx.fillText(s.id, poly[0][0] + 4, poly[0][1] - 6);
+          ctx.font = 'bold 9px JetBrains Mono';
+          ctx.fillText(s.id, poly[0][0] + 6, poly[0][1] - 5);
         });
       }
 
-      // STEP 4+: LOW-WEIGHT YOLO CANDIDATE PROPOSALS (Amber dashed boxes on real vehicles)
+      // STEP 4+: LOW-WEIGHT YOLO CANDIDATE PROPOSALS (Autonomous perception brackets)
       if (step >= 4) {
         cfg.slots.forEach((s) => {
           if (s.yoloBbox) {
             const [bx, by, bw, bh] = s.yoloBbox;
-            ctx.strokeStyle = '#f59e0b'; // amber
+            
+            // Perception bracket corners (Waymo / Tesla style)
+            ctx.strokeStyle = '#f59e0b';
             ctx.lineWidth = 2;
-            ctx.setLineDash([4, 2]);
-            ctx.strokeRect(bx, by, bw, bh);
-            ctx.setLineDash([]);
+            const len = 10;
+            // top-left
+            ctx.beginPath(); ctx.moveTo(bx, by + len); ctx.lineTo(bx, by); ctx.lineTo(bx + len, by); ctx.stroke();
+            // top-right
+            ctx.beginPath(); ctx.moveTo(bx + bw - len, by); ctx.lineTo(bx + bw, by); ctx.lineTo(bx + bw, by + len); ctx.stroke();
+            // bottom-left
+            ctx.beginPath(); ctx.moveTo(bx, by + bh - len); ctx.lineTo(bx, by + bh); ctx.lineTo(bx + len, by + bh); ctx.stroke();
+            // bottom-right
+            ctx.beginPath(); ctx.moveTo(bx + bw - len, by + bh); ctx.lineTo(bx + bw, by + bh); ctx.lineTo(bx + bw, by + bh - len); ctx.stroke();
 
-            // Label
+            // Label Chip
             ctx.fillStyle = '#f59e0b';
-            ctx.fillRect(bx, by - 16, 85, 16);
-            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(bx, by - 16, 80, 15);
+            ctx.fillStyle = '#020617';
             ctx.font = 'bold 9px JetBrains Mono';
-            ctx.fillText(`${s.yoloClass}: ${s.yoloConf}`, bx + 3, by - 4);
+            ctx.fillText(`${s.yoloClass} ${s.yoloConf}`, bx + 4, by - 5);
 
             // Ground Contact Patch Projection (Bottom 20%)
             ctx.strokeStyle = '#10b981';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(bx, by + bh - 10, bw, 10);
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(bx, by + bh - 8, bw, 8);
           }
         });
       }
 
-      // STEP 5+: CONTEXTUAL AREA ANALYSIS OVERLAY
+      // STEP 5+: CONTEXTUAL AREA HIGHLIGHT
       if (step >= 5) {
         const active = cfg.slots[state.selectedSlotIndex];
         if (active) {
-          // Highlight active slot contact patch
           const poly = active.camPolygon;
           ctx.strokeStyle = '#38bdf8';
           ctx.lineWidth = 3;
@@ -882,21 +937,21 @@
       ctx.clearRect(0, 0, w, h);
 
       // Background rectified pavement
-      ctx.fillStyle = '#0b1120';
+      ctx.fillStyle = '#060a12';
       ctx.fillRect(0, 0, w, h);
 
-      // 1. RENDER ACTUAL HOMOGRAPHY WARPED GROUND PLANE FROM PHOTO!
+      // 1. RENDER ACTUAL HOMOGRAPHY WARPED GROUND PLANE
       if (state.showWarpedPlane && state.loadedImage && state.loadedImage.complete) {
         warpQuadToCanvas(ctx, state.loadedImage, cfg.groundQuad.src, cfg.groundQuad.dst, 10);
         
-        // Translucent dark wash over warped image so overlay text is readable
-        ctx.fillStyle = 'rgba(11, 17, 32, 0.45)';
+        // Translucent dark wash for readability
+        ctx.fillStyle = 'rgba(6, 10, 18, 0.45)';
         ctx.fillRect(0, 0, w, h);
       }
 
       // 2. Metric Grid
       if (state.showGrid) {
-        ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.15)';
         ctx.lineWidth = 1;
         const gridSize = 40;
         for (let x = 0; x < w; x += gridSize) {
@@ -919,7 +974,7 @@
         ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
 
         ctx.strokeStyle = isSelected ? '#38bdf8' : strokeColor;
-        ctx.lineWidth = isSelected ? 3 : 2;
+        ctx.lineWidth = isSelected ? 3 : 1.75;
         ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
 
         // Header label
@@ -929,8 +984,8 @@
 
         // Vehicle footprint silhouette inside occupied stalls
         if (isOcc) {
-          const padX = 12;
-          const padY = 28;
+          const padX = 14;
+          const padY = 30;
           ctx.fillStyle = '#0284c7';
           ctx.beginPath();
           ctx.roundRect(rect.x + padX, rect.y + padY, rect.w - padX*2, rect.h - padY*2, 6);
@@ -939,9 +994,9 @@
           // Directional Arrow
           ctx.fillStyle = '#ffffff';
           ctx.beginPath();
-          ctx.moveTo(rect.x + rect.w/2, rect.y + padY + 14);
-          ctx.lineTo(rect.x + rect.w/2 - 8, rect.y + padY + 28);
-          ctx.lineTo(rect.x + rect.w/2 + 8, rect.y + padY + 28);
+          ctx.moveTo(rect.x + rect.w/2, rect.y + padY + 12);
+          ctx.lineTo(rect.x + rect.w/2 - 7, rect.y + padY + 24);
+          ctx.lineTo(rect.x + rect.w/2 + 7, rect.y + padY + 24);
           ctx.closePath();
           ctx.fill();
         }
@@ -966,51 +1021,51 @@
 
       ctx.clearRect(0, 0, w, h);
 
-      // Campus background pavement
-      ctx.fillStyle = '#0f172a';
+      // Background
+      ctx.fillStyle = '#070c16';
       ctx.fillRect(0, 0, w, h);
 
       // Lot perimeter border
-      ctx.strokeStyle = '#334155';
+      ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 1;
-      ctx.strokeRect(25, 25, w - 50, h - 50);
+      ctx.strokeRect(20, 20, w - 40, h - 40);
 
       ctx.fillStyle = '#64748b';
-      ctx.font = 'bold 11px JetBrains Mono';
-      ctx.fillText(`CAMPUS LOT ${cfg.lot} — VISITOR & FACULTY BAYS`, 40, 50);
+      ctx.font = 'bold 10px JetBrains Mono';
+      ctx.fillText(`LOT ${cfg.lot} — VISITOR & FACULTY BAYS`, 35, 45);
 
       // Draw all parking slots
       cfg.slots.forEach((s, idx) => {
         const isOcc = (s.status === 'occupied');
         const isSelected = (idx === state.selectedSlotIndex);
-        const mapX = 40 + idx * 70;
-        const mapY = 75;
+        const mapX = 35 + idx * 70;
+        const mapY = 70;
         const mapW = 60;
-        const mapH = 140;
+        const mapH = 150;
 
         const strokeColor = isOcc ? '#f43f5e' : '#10b981';
         ctx.fillStyle = isOcc ? 'rgba(244, 63, 94, 0.25)' : 'rgba(16, 185, 129, 0.20)';
         ctx.fillRect(mapX, mapY, mapW, mapH);
 
         ctx.strokeStyle = isSelected ? '#38bdf8' : strokeColor;
-        ctx.lineWidth = isSelected ? 3 : 2;
+        ctx.lineWidth = isSelected ? 3 : 1.5;
         ctx.strokeRect(mapX, mapY, mapW, mapH);
 
         // Label
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 10px JetBrains Mono';
-        ctx.fillText(s.id, mapX + 6, mapY + 22);
+        ctx.fillText(s.id, mapX + 8, mapY + 22);
 
         // Status indicator dot
         ctx.fillStyle = strokeColor;
         ctx.beginPath();
-        ctx.arc(mapX + mapW - 12, mapY + 18, 5, 0, Math.PI * 2);
+        ctx.arc(mapX + mapW - 12, mapY + 18, 4, 0, Math.PI * 2);
         ctx.fill();
 
         // Occupancy %
         ctx.fillStyle = '#94a3b8';
         ctx.font = '9px JetBrains Mono';
-        ctx.fillText(`${Math.round(s.consumedRatio * 100)}%`, mapX + 6, mapY + 45);
+        ctx.fillText(`${Math.round(s.consumedRatio * 100)}%`, mapX + 8, mapY + 45);
       });
     }
 
@@ -1037,14 +1092,23 @@
         badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-emerald-950 text-emerald-300 border border-emerald-800';
       }
 
-      // Update slot navigation pill list below perspective canvas
+      // Update slot navigation capsule list below perspective canvas
       const pillContainer = document.getElementById('slotPillList');
       if (pillContainer) {
         pillContainer.innerHTML = cfg.slots.map((s, idx) => {
           const isSel = (idx === state.selectedSlotIndex);
           const isOcc = (s.status === 'occupied');
-          const bg = isSel ? 'bg-cyan-500 text-slate-950 font-bold' : (isOcc ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800');
-          return `<button onclick="selectSlot(${idx})" class="px-2 py-0.5 rounded text-[10px] font-mono transition-all ${bg}">${s.id}</button>`;
+          const dot = isOcc ? 'bg-rose-500' : 'bg-emerald-400';
+          const activeStyle = isSel 
+            ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-sm' 
+            : 'bg-slate-900/80 text-slate-300 border-slate-700/60 hover:border-slate-500';
+          return `
+            <button onclick="selectSlot(${idx})" class="px-2 py-0.5 rounded-md text-[10px] font-mono border flex items-center gap-1.5 transition-all ${activeStyle}">
+              <span class="w-1.5 h-1.5 rounded-full ${dot}"></span>
+              <span>${s.id}</span>
+              <span class="text-[9px] opacity-75">${Math.round(s.consumedRatio * 100)}%</span>
+            </button>
+          `;
         }).join('');
       }
 
@@ -1075,29 +1139,29 @@
           const cfg = getActiveConfig();
           const isCctv = state.cameraMode === 'cctv';
           return `
-            <div class="grid grid-cols-2 gap-4">
-              <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1.5">
                 <div class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full ${isCctv ? 'bg-cyan-400' : 'bg-slate-600'}"></span>
                   Active Stream: ${cfg.name}
                 </div>
-                <ul class="text-xs text-slate-300 space-y-1 font-mono">
+                <ul class="text-[11px] text-slate-300 space-y-1 font-mono">
                   <li>• Mount Pitch: <span class="text-cyan-300">${cfg.pitch}</span></li>
-                  <li>• Native Resolution: <span class="text-slate-100">${cfg.res}</span></li>
-                  <li>• Frame Rate: <span class="text-slate-100">25.0 FPS (RTSP H.264)</span></li>
+                  <li>• Resolution: <span class="text-slate-100">${cfg.res}</span></li>
+                  <li>• Frame Rate: <span class="text-slate-100">25.0 FPS (H.264)</span></li>
                   <li>• Ingestion Source: <span class="text-emerald-300">${state.sourceName}</span></li>
                 </ul>
               </div>
 
-              <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
+              <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1.5">
                 <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
-                  Optical Distortion Profile
+                  Optical Characteristics
                 </div>
-                <ul class="text-xs text-slate-300 space-y-1 font-mono">
+                <ul class="text-[11px] text-slate-300 space-y-1 font-mono">
                   <li>• Foreshortening: <span class="text-amber-400">2.84x (Trapezoidal)</span></li>
                   <li>• Vanishing Horizon: <span class="text-slate-100">y ≈ 180px</span></li>
-                  <li>• Target Rectification: <span class="text-cyan-400">Homography H Matrix</span></li>
+                  <li>• Target Plane: <span class="text-cyan-400">Homography H Matrix</span></li>
                 </ul>
               </div>
             </div>
@@ -1115,9 +1179,9 @@
           return `
             <div class="space-y-3 text-xs">
               <div class="grid grid-cols-2 gap-3">
-                <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 font-mono">
+                <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 font-mono">
                   <div class="text-slate-400 text-[10px] uppercase">Source Quad (Perspective Frame)</div>
-                  <div class="text-slate-200 mt-1 space-y-0.5">
+                  <div class="text-slate-200 mt-1 space-y-0.5 text-[11px]">
                     <div>P0: [${pts.src[0].join(', ')}]</div>
                     <div>P1: [${pts.src[1].join(', ')}]</div>
                     <div>P2: [${pts.src[2].join(', ')}]</div>
@@ -1125,9 +1189,9 @@
                   </div>
                 </div>
 
-                <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 font-mono">
+                <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 font-mono">
                   <div class="text-slate-400 text-[10px] uppercase">Destination Quad (BEV Plane)</div>
-                  <div class="text-cyan-300 mt-1 space-y-0.5">
+                  <div class="text-cyan-300 mt-1 space-y-0.5 text-[11px]">
                     <div>D0: [${pts.dst[0].join(', ')}]</div>
                     <div>D1: [${pts.dst[1].join(', ')}]</div>
                     <div>D2: [${pts.dst[2].join(', ')}]</div>
@@ -1135,8 +1199,8 @@
                   </div>
                 </div>
               </div>
-              <p class="text-xs text-slate-400">
-                Notice the right panel: The ground plane from the actual photo has been <strong>rectified</strong>. Converging pavement lane markings become parallel vertical lines in the BEV canvas.
+              <p class="text-[11px] text-slate-400">
+                Notice the right panel: The ground plane from the actual photo is rectified in real time. Converging pavement lane markings become parallel vertical bays in the BEV canvas.
               </p>
             </div>
           `;
@@ -1151,21 +1215,21 @@
           return `
             <div class="space-y-3 text-xs">
               <div class="grid grid-cols-2 gap-3">
-                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2">
+                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1.5">
                   <div class="text-slate-400 uppercase font-mono text-[10px]">Anchor Micro-Drift (ΔH)</div>
                   <div class="flex items-baseline gap-2">
-                    <span class="text-xl font-bold font-mono text-emerald-400">0.89 px</span>
-                    <span class="text-[11px] font-mono text-slate-400">(Threshold: τ = 5.0 px)</span>
+                    <span class="text-lg font-bold font-mono text-emerald-400">0.89 px</span>
+                    <span class="text-[10px] font-mono text-slate-400">(Threshold: τ = 5.0 px)</span>
                   </div>
                   <div class="text-slate-300 text-[11px]">Vector: <code class="text-cyan-300 font-mono">[dx: +0.8px, dy: -0.4px]</code></div>
                   <div class="text-[11px] text-emerald-300">✔ Dynamic compensation applied without manual recalibration</div>
                 </div>
 
-                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2">
+                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1.5">
                   <div class="text-slate-400 uppercase font-mono text-[10px]">Bay Partitioning Model</div>
                   <div class="text-slate-300 text-[11px]">Mode: <span class="font-bold text-cyan-300 font-mono">calibrated_lot_bays</span></div>
-                  <div class="text-slate-300 text-[11px]">Total Bays: <span class="font-mono text-slate-100">6 Bays (5 Cars, 1 Motorcycle)</span></div>
-                  <div class="text-slate-300 text-[11px]">Partition Metric: <span class="font-mono text-emerald-400">12.50 m² standard bay area</span></div>
+                  <div class="text-slate-300 text-[11px]">Total Bays: <span class="font-mono text-slate-100">6 Bays Calibrated</span></div>
+                  <div class="text-slate-300 text-[11px]">Standard Bay Area: <span class="font-mono text-emerald-400">12.50 m²</span></div>
                 </div>
               </div>
             </div>
@@ -1182,7 +1246,7 @@
           const active = cfg.slots[state.selectedSlotIndex];
           return `
             <div class="space-y-3 text-xs">
-              <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
                 <div>
                   <div class="font-bold text-slate-200">Supporting YOLO Detector Config</div>
                   <div class="text-slate-400 text-[11px]">Confidence Floor: <span class="font-mono text-amber-400">τ = 0.30</span> (low-weight)</div>
@@ -1220,25 +1284,25 @@
           return `
             <div class="space-y-3 text-xs">
               <div class="grid grid-cols-3 gap-2 text-center">
-                <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                  <div class="text-slate-400 text-[10px] uppercase font-mono">Slot Area</div>
+                <div class="bg-slate-950/80 p-2 rounded-xl border border-slate-800">
+                  <div class="text-slate-400 text-[9px] uppercase font-mono">Slot Area</div>
                   <div class="font-mono text-cyan-300 font-bold text-sm mt-0.5">${m.slot.areaM2} m²</div>
                 </div>
-                <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                  <div class="text-slate-400 text-[10px] uppercase font-mono">Consumed Area (ρ)</div>
+                <div class="bg-slate-950/80 p-2 rounded-xl border border-slate-800">
+                  <div class="text-slate-400 text-[9px] uppercase font-mono">Consumed Area (ρ)</div>
                   <div class="font-mono ${m.consumedRatio > 0.4 ? 'text-rose-400' : 'text-emerald-400'} font-bold text-sm mt-0.5">
                     ${(m.consumedRatio * 100).toFixed(1)}%
                   </div>
                 </div>
-                <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                  <div class="text-slate-400 text-[10px] uppercase font-mono">Remaining Usable</div>
+                <div class="bg-slate-950/80 p-2 rounded-xl border border-slate-800">
+                  <div class="text-slate-400 text-[9px] uppercase font-mono">Remaining Usable</div>
                   <div class="font-mono ${m.remainingRatio < 0.6 ? 'text-amber-400' : 'text-emerald-400'} font-bold text-sm mt-0.5">
                     ${(m.remainingRatio * 100).toFixed(1)}%
                   </div>
                 </div>
               </div>
-              <div class="p-3 rounded-xl border ${m.slot.status === 'occupied' ? 'bg-rose-950/30 border-rose-800/50 text-rose-200' : 'bg-emerald-950/30 border-emerald-800/50 text-emerald-200'} text-xs">
-                <strong>Context Assessment:</strong> Slot ${m.slot.id} has ${Math.round(m.consumedRatio * 100)}% contact area footprint occupied by vehicle. Remaining free space is insufficient for another vehicle.
+              <div class="p-2.5 rounded-xl border ${m.slot.status === 'occupied' ? 'bg-rose-950/30 border-rose-800/50 text-rose-200' : 'bg-emerald-950/30 border-emerald-800/50 text-emerald-200'} text-xs">
+                <strong>Context Assessment:</strong> Slot ${m.slot.id} has ${Math.round(m.consumedRatio * 100)}% contact area footprint occupied by vehicle.
               </div>
             </div>
           `;
@@ -1253,12 +1317,12 @@
           const m = computeSlotMetrics(state.selectedSlotIndex);
           return `
             <div class="space-y-3 text-xs">
-              <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
                 <div class="flex items-center justify-between">
                   <span class="text-slate-400 font-mono uppercase text-[10px]">1-Minute Sliding Mean Buffer (60 Frames)</span>
                   <span class="text-cyan-400 font-mono font-bold">p̄₆₀ₛ = ${m.mean}</span>
                 </div>
-                <div class="h-10 bg-slate-900 rounded-lg p-1 flex items-end gap-1 border border-slate-800/80">
+                <div class="h-9 bg-slate-900 rounded-lg p-1 flex items-end gap-1 border border-slate-800/80">
                   ${state.confidenceHistory.map(v => `
                     <div class="flex-1 bg-cyan-500/80 rounded-t hover:bg-cyan-400 transition-all" style="height: ${Math.round(v * 100)}%" title="${v.toFixed(3)}"></div>
                   `).join('')}
@@ -1302,7 +1366,7 @@
                 </p>
               </div>
 
-              <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 font-mono text-[10px] space-y-1 text-slate-300">
+              <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 font-mono text-[10px] space-y-1 text-slate-300">
                 <div class="text-slate-400 uppercase font-bold text-[9px] mb-1">Contract Validation Checklist:</div>
                 <div class="text-emerald-400">✔ schema_version === "2026-10-30.2"</div>
                 <div class="text-emerald-400">✔ correlation_id === null (strictly observation)</div>
@@ -1326,11 +1390,11 @@
       document.querySelectorAll('.step-btn').forEach(btn => {
         const stepNum = parseInt(btn.getAttribute('data-step'));
         if (stepNum === state.activeStep) {
-          btn.className = 'step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold shadow-sm';
-          btn.querySelector('span:first-child').className = 'w-5 h-5 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center text-[11px] font-bold';
+          btn.className = 'step-btn px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold shadow-sm glow-cyan';
+          btn.querySelector('span:first-child').className = 'w-5 h-5 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center text-[10px] font-bold';
         } else {
-          btn.className = 'step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent';
-          btn.querySelector('span:first-child').className = 'w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold';
+          btn.className = 'step-btn px-2.5 py-1.5 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent';
+          btn.querySelector('span:first-child').className = 'w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold';
         }
       });
 
@@ -1338,7 +1402,6 @@
       document.getElementById('nextStepBtn').disabled = (state.activeStep === 7);
     }
 
-    // Render Everything
     function renderAll() {
       renderPerspectiveCanvas();
       renderBevCanvas();
@@ -1347,15 +1410,12 @@
       updateStepDetailView();
     }
 
-    // Slot Selection
     window.selectSlot = function(idx) {
       state.selectedSlotIndex = idx;
       renderAll();
     };
 
-    // ════════════════════════════════════════════════════════════════
-    // FULL ANALYSIS EXECUTION (Scanning pipeline animation)
-    // ════════════════════════════════════════════════════════════════
+    // Full Pipeline Analysis Execution
     function triggerFullAnalysis() {
       state.isAnalyzing = true;
       const overlay = document.getElementById('scanOverlay');
@@ -1383,18 +1443,17 @@
           state.isAnalyzing = false;
           renderAll();
         }
-      }, 160);
+      }, 150);
 
       renderPerspectiveCanvas();
     }
 
-    // Load Scene Image
     function loadScene(sceneKey, name) {
       state.currentSceneKey = sceneKey;
       state.sourceName = name;
       const cfg = getActiveConfig();
 
-      document.getElementById('camStreamTitle').textContent = `Ingested Frame / Perspective Stream (${name})`;
+      document.getElementById('camStreamTitle').textContent = `Ingested Stream (${name})`;
       document.getElementById('camResBadge').textContent = cfg.res;
       document.getElementById('camOverlayText').textContent = `Ingested: ${name}`;
 
@@ -1411,9 +1470,7 @@
       img.src = sceneKey;
     }
 
-    // ════════════════════════════════════════════════════════════════
-    // FILE INGESTION (Upload & Drag & Drop)
-    // ════════════════════════════════════════════════════════════════
+    // Ingest Image
     function processPhotoFile(file) {
       if (!file || !file.type.startsWith('image/')) {
         alert('Please choose a valid image file (JPG, PNG, WEBP).');
@@ -1428,12 +1485,11 @@
           state.sourceName = file.name;
           state.isCustomImage = true;
 
-          // Dynamically configure custom ingestion in scene configs
           SCENE_CONFIGS['custom'] = {
             name: `Custom Ingestion (${file.name})`,
             lot: 'A',
             camId: 'cam-custom-01',
-            res: `${img.naturalWidth}x${img.naturalHeight}`,
+            res: `${img.naturalWidth}×${img.naturalHeight}`,
             pitch: '45° User Camera',
             groundQuad: {
               src: [[80, 200], [560, 200], [610, 440], [30, 440]],
@@ -1460,7 +1516,7 @@
 
           state.currentSceneKey = 'custom';
           document.getElementById('camStreamTitle').textContent = `Custom Ingestion: ${file.name}`;
-          document.getElementById('camResBadge').textContent = `${img.naturalWidth}x${img.naturalHeight}`;
+          document.getElementById('camResBadge').textContent = `${img.naturalWidth}×${img.naturalHeight}`;
           document.getElementById('camOverlayText').textContent = `Custom Ingested Photo: ${file.name}`;
 
           const customGroup = document.getElementById('customOptGroup');
@@ -1479,7 +1535,7 @@
     }
 
     // ════════════════════════════════════════════════════════════════
-    // EVENT LISTENERS
+    // EVENT LISTENERS & COPY FUNCTIONALITY
     // ════════════════════════════════════════════════════════════════
     const fileInput = document.getElementById('photoFileInput');
     const ingestBtn = document.getElementById('btnIngestPhoto');
@@ -1496,7 +1552,7 @@
       }
     });
 
-    // Global drag & drop on window
+    // Global drag & drop
     window.addEventListener('dragover', (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
@@ -1522,7 +1578,6 @@
       }
     });
 
-    // Scenario / Camera selector
     document.getElementById('scenarioSelector').addEventListener('change', (e) => {
       const val = e.target.value;
       if (val.startsWith('samples/')) {
@@ -1531,11 +1586,10 @@
       }
     });
 
-    // Camera Mode Toggle
     document.getElementById('camCctvBtn').addEventListener('click', () => {
       state.cameraMode = 'cctv';
-      document.getElementById('camCctvBtn').className = 'px-3 py-1.5 rounded-md font-medium transition-colors bg-cyan-600 text-white shadow-sm flex items-center gap-1.5';
-      document.getElementById('camOptimizedBtn').className = 'px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5';
+      document.getElementById('camCctvBtn').className = 'px-2.5 py-1 rounded-md font-medium transition-all bg-cyan-600 text-white shadow-sm flex items-center gap-1.5';
+      document.getElementById('camOptimizedBtn').className = 'px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-all flex items-center gap-1.5';
       document.getElementById('metricForeshortening').textContent = '2.84x (High)';
       document.getElementById('metricOcclusionRisk').textContent = 'Moderate (Rear Row)';
       renderAll();
@@ -1543,14 +1597,13 @@
 
     document.getElementById('camOptimizedBtn').addEventListener('click', () => {
       state.cameraMode = 'optimized';
-      document.getElementById('camOptimizedBtn').className = 'px-3 py-1.5 rounded-md font-medium transition-colors bg-cyan-600 text-white shadow-sm flex items-center gap-1.5';
-      document.getElementById('camCctvBtn').className = 'px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5';
+      document.getElementById('camOptimizedBtn').className = 'px-2.5 py-1 rounded-md font-medium transition-all bg-cyan-600 text-white shadow-sm flex items-center gap-1.5';
+      document.getElementById('camCctvBtn').className = 'px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-all flex items-center gap-1.5';
       document.getElementById('metricForeshortening').textContent = '1.05x (Low)';
       document.getElementById('metricOcclusionRisk').textContent = 'None (< 3%)';
       renderAll();
     });
 
-    // Stepper navigation
     document.querySelectorAll('.step-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         state.activeStep = parseInt(btn.getAttribute('data-step'));
@@ -1572,18 +1625,17 @@
       }
     });
 
-    // Autoplay Pipeline
     document.getElementById('autoplayBtn').addEventListener('click', () => {
       if (state.isAutoplay) {
         clearInterval(state.autoplayInterval);
         state.isAutoplay = false;
-        document.getElementById('autoplayBtnText').textContent = 'Play Pipeline (Auto)';
+        document.getElementById('autoplayBtnText').textContent = 'Play Pipeline';
         document.getElementById('autoplayBtn').classList.remove('bg-rose-600');
-        document.getElementById('autoplayBtn').classList.add('bg-indigo-600');
+        document.getElementById('autoplayBtn').classList.add('bg-indigo-600/80');
       } else {
         state.isAutoplay = true;
-        document.getElementById('autoplayBtnText').textContent = 'Pause Autoplay';
-        document.getElementById('autoplayBtn').classList.remove('bg-indigo-600');
+        document.getElementById('autoplayBtnText').textContent = 'Pause';
+        document.getElementById('autoplayBtn').classList.remove('bg-indigo-600/80');
         document.getElementById('autoplayBtn').classList.add('bg-rose-600');
 
         state.autoplayInterval = setInterval(() => {
@@ -1593,7 +1645,6 @@
       }
     });
 
-    // BEV Toggles
     document.getElementById('toggleGridBtn').addEventListener('click', () => {
       state.showGrid = !state.showGrid;
       document.getElementById('toggleGridBtn').textContent = `Grid: ${state.showGrid ? 'ON' : 'OFF'}`;
@@ -1606,7 +1657,17 @@
       renderBevCanvas();
     });
 
-    // Interactive Slot Selection from Perspective Canvas Click
+    // Copy JSON to clipboard
+    document.getElementById('copyJsonBtn').addEventListener('click', () => {
+      const text = document.getElementById('eventJsonPreview').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const feedback = document.getElementById('copyFeedback');
+        feedback.classList.remove('hidden');
+        setTimeout(() => feedback.classList.add('hidden'), 1500);
+      });
+    });
+
+    // Interactive Slot Selection
     document.getElementById('cameraCanvas').addEventListener('click', (e) => {
       const rect = e.target.getBoundingClientRect();
       const clickX = (e.clientX - rect.left) * (640 / rect.width);
@@ -1614,7 +1675,6 @@
       const cfg = getActiveConfig();
 
       cfg.slots.forEach((s, idx) => {
-        // Point in polygon test
         const poly = s.camPolygon;
         let inside = false;
         for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -1623,13 +1683,10 @@
           const intersect = ((yi > clickY) !== (yj > clickY)) && (clickX < (xj - xi) * (clickY - yi) / (yj - yi) + xi);
           if (intersect) inside = !inside;
         }
-        if (inside) {
-          selectSlot(idx);
-        }
+        if (inside) selectSlot(idx);
       });
     });
 
-    // Interactive Slot Selection from BEV Canvas Click
     document.getElementById('bevCanvas').addEventListener('click', (e) => {
       const rect = e.target.getBoundingClientRect();
       const clickX = (e.clientX - rect.left) * (640 / rect.width);
@@ -1644,7 +1701,6 @@
       });
     });
 
-    // Interactive Slot Selection from Overhead Map Canvas Click
     document.getElementById('overheadMapCanvas').addEventListener('click', (e) => {
       const rect = e.target.getBoundingClientRect();
       const clickX = (e.clientX - rect.left) * (480 / rect.width);
@@ -1652,10 +1708,10 @@
       const cfg = getActiveConfig();
 
       cfg.slots.forEach((s, idx) => {
-        const mapX = 40 + idx * 70;
-        const mapY = 75;
+        const mapX = 35 + idx * 70;
+        const mapY = 70;
         const mapW = 60;
-        const mapH = 140;
+        const mapH = 150;
         if (clickX >= mapX && clickX <= mapX + mapW && clickY >= mapY && clickY <= mapY + mapH) {
           selectSlot(idx);
         }
@@ -1667,7 +1723,6 @@
     // ════════════════════════════════════════════════════════════════
     window.addEventListener('DOMContentLoaded', () => {
       renderAll();
-      // Load Campus View B by default (matching the user's active view)
       loadScene('samples/cam_view_B.jpg', 'Campus View B (Frontal Lot B)');
     });
   </script>
