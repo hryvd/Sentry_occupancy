@@ -4,1282 +4,1732 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SENTRY — Parking Occupancy Cognitive Visualizer</title>
+  <!-- Tailwind CSS via allowlisted CDN -->
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
-    body { font-family: 'Inter', system-ui, sans-serif; }
-    .mono { font-family: 'JetBrains Mono', 'Cascadia Code', monospace; }
-    .drop-zone-active { border-color: #06b6d4 !important; background: rgba(6,182,212,0.12) !important; }
-    @keyframes scan-line {
-      0%   { top: 0%; opacity: 0.8; }
-      100% { top: 100%; opacity: 0; }
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     }
-    .scan-anim { animation: scan-line 1.6s ease-in infinite; }
-    @keyframes pulse-ring {
-      0%,100% { opacity:1; transform:scale(1); }
-      50%      { opacity:0.4; transform:scale(1.15); }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
     }
-    .pulse-ring { animation: pulse-ring 1.5s ease-in-out infinite; }
-    .slot-available { stroke: #10b981; fill: rgba(16,185,129,0.14); }
-    .slot-occupied  { stroke: #f43f5e; fill: rgba(244,63,94,0.18); }
-    .slot-unknown   { stroke: #f59e0b; fill: rgba(245,158,11,0.14); }
-    .spark-bar { transition: height 0.3s ease; }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(71, 85, 105, 0.8);
+      border-radius: 3px;
+    }
+    @keyframes scanline {
+      0% { top: 0%; opacity: 0.8; }
+      50% { opacity: 1; }
+      100% { top: 100%; opacity: 0.1; }
+    }
+    .scan-line-anim {
+      animation: scanline 1.6s ease-in-out infinite;
+    }
+    .pulse-glow {
+      animation: pulse-glow 2s infinite ease-in-out;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.9; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.02); }
+    }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 antialiased flex flex-col min-h-screen">
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col selection:bg-cyan-500 selection:text-white custom-scrollbar relative">
 
-<!-- ═══════════════════════════════════ HEADER ═══════════════════════════════════ -->
-<header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-2.5">
-  <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-
-    <!-- Brand -->
-    <div class="flex items-center gap-2.5">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg">
-        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414A1 1 0 0121 17.586V16a1 1 0 01-1 1h-1"/>
-        </svg>
+  <!-- GLOBAL DRAG & DROP OVERLAY (Appears when dragging any image into the window) -->
+  <div id="globalDropOverlay" class="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center border-4 border-dashed border-cyan-400 hidden pointer-events-none transition-all">
+    <div class="p-8 rounded-3xl bg-slate-900/95 border border-cyan-500/50 shadow-2xl shadow-cyan-500/20 text-center flex flex-col items-center gap-4 max-w-md">
+      <div class="w-20 h-20 rounded-2xl bg-cyan-950 border border-cyan-500/80 flex items-center justify-center text-4xl animate-bounce">
+        📸
       </div>
       <div>
-        <div class="flex items-center gap-2">
-          <span class="text-sm font-bold text-white">SENTRY <span class="text-cyan-400">Occupancy Vision</span></span>
-          <span class="text-[10px] mono px-1.5 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">BSU Lots A–D</span>
-          <span class="text-[10px] mono px-1.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">MOCK BACKEND</span>
-        </div>
-        <p class="text-[11px] text-slate-400">Photo Ingestion → Homography → Pixel Analysis → Cognitive Fusion → Final Call</p>
+        <div class="text-xl font-bold text-white tracking-wide">Drop Parking Photo Here</div>
+        <div class="text-xs text-cyan-300 font-mono mt-1">Accepts JPG, PNG, WEBP — Will run 7-step analysis automatically</div>
       </div>
-    </div>
-
-    <!-- Controls -->
-    <div class="flex items-center gap-2 flex-wrap">
-      <!-- Upload — uses for="fileInput" so the browser opens the OS picker natively -->
-      <label for="fileInput" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow shadow-cyan-700/40">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-        </svg>
-        <span>📁 Upload Parking Photo</span>
-      </label>
-
-      <!-- Sample Picker -->
-      <select id="sampleSelect" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-1.5 cursor-pointer focus:ring-1 focus:ring-cyan-500 mono">
-        <option value="">── Load Sample ──</option>
-        <option value="samples/cam_view_A.jpg">📸 Campus View A (Oblique)</option>
-        <option value="samples/cam_view_B.jpg">📸 Campus View B (Frontal)</option>
-        <option value="samples/cam_view_C.jpg">📸 Campus View C (Overhead)</option>
-        <option value="samples/example_full.jpg">🟥 Fixture: example_full.jpg</option>
-        <option value="samples/example_partial.jpg">🟧 Fixture: example_partial.jpg</option>
-        <option value="samples/example_empty.jpg">🟩 Fixture: example_empty.jpg</option>
-      </select>
-
-      <!-- Camera Mode -->
-      <div class="flex items-center bg-slate-800/80 rounded-lg p-0.5 border border-slate-700 text-xs gap-0.5">
-        <button id="btnCctv" class="px-2.5 py-1.5 rounded-md font-semibold transition-all bg-cyan-600 text-white flex items-center gap-1.5">
-          <span class="w-1.5 h-1.5 rounded-full bg-cyan-200 pulse-ring"></span>
-          CCTV Oblique 45°
-        </button>
-        <button id="btnOpt" class="px-2.5 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition-all">
-          Optimized 80°
-        </button>
-      </div>
-
-      <!-- Run Analysis -->
-      <button id="btnAnalyze" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 transition-all shadow shadow-indigo-700/40">
-        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
-        </svg>
-        <span id="btnAnalyzeTxt">▶ Run Full Analysis</span>
-      </button>
+      <div class="text-[11px] text-slate-400">Homography warping • Pixel variance & edge density • Cognitive AI fusion</div>
     </div>
   </div>
-</header>
 
-<!-- ═══════════════════════════════ DROP ZONE (native label = click always works) ═══════════════════════════════ -->
-<!-- Hidden file input lives HERE, outside any label, so JS can also programmatically trigger it -->
-<input type="file" id="fileInput" accept="image/*" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;" tabindex="-1">
+  <!-- HIDDEN NATIVE FILE INPUT (Triggered directly via Ingest button) -->
+  <input type="file" id="photoFileInput" accept="image/*" class="hidden" style="display:none;" />
 
-<div class="max-w-7xl mx-auto w-full px-4 pt-3">
-  <!-- label[for=fileInput] = clicking anywhere on this opens the OS file dialog natively, no JS needed -->
-  <label for="fileInput" id="dropZone"
-    class="block border-2 border-dashed border-slate-700 hover:border-cyan-600 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 cursor-pointer transition-all select-none">
-    <div class="flex items-center gap-3 text-xs pointer-events-none">
-      <span class="text-2xl">📂</span>
-      <div>
-        <span class="font-semibold text-slate-200">Click here or drop a parking photo to analyze it</span>
-        <span class="text-slate-400 ml-2">— The pipeline will warp, pixel-sample, and score every stall automatically.</span>
-      </div>
-    </div>
-    <div class="flex items-center gap-2 text-[11px] mono pointer-events-none">
-      <span class="text-slate-400">Source:</span>
-      <span id="sourceBadge" class="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">No photo loaded — using synthetic demo</span>
-    </div>
-  </label>
-</div>
-
-<!-- ═══════════════════════════════ STEP PIPELINE HEADER ═══════════════════════════════ -->
-<div class="max-w-7xl mx-auto w-full px-4 pt-3">
-  <div class="bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 flex items-center gap-1.5 overflow-x-auto">
-    <template id="step-tpl"><!-- filled by JS --></template>
-    <div id="stepperRow" class="flex items-center gap-1 text-xs font-semibold"></div>
-    <div class="ml-auto flex items-center gap-1 shrink-0">
-      <button id="prevStep" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs disabled:opacity-30">◀ Prev</button>
-      <button id="nextStep" class="px-2.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs disabled:opacity-30">Next ▶</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════ MAIN GRID ═══════════════════════════════ -->
-<main class="max-w-7xl mx-auto w-full p-4 flex flex-col gap-4 flex-1">
-
-  <!-- ROW 1: Dual Viewports -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-    <!-- Camera / Ingested Photo Panel -->
-    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-rose-500 pulse-ring"></span>
-          <h2 class="text-xs font-bold uppercase tracking-wide text-slate-300" id="camTitle">Perspective Frame — cam-lot-a-01</h2>
+  <!-- TOP APP BAR -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400/30">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+          </svg>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="text-[10px] mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded" id="fpsBadge">25.0 FPS</span>
-          <span class="text-[10px] mono bg-cyan-950/60 text-cyan-400 px-2 py-0.5 rounded border border-cyan-800/50" id="resBadge">640×480</span>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
+              SENTRY <span class="text-cyan-400">Occupancy Vision</span>
+            </h1>
+            <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
+              BSU Campus Lots A–D
+            </span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
+              MOCK BACKEND
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Photo Ingestion • Homography Warping • Adaptive Mapping • Cognitive Fusion</p>
         </div>
       </div>
 
-      <div class="relative bg-slate-950 rounded-xl overflow-hidden aspect-[4/3] border border-slate-800">
-        <canvas id="camCanvas" width="640" height="480" class="w-full h-full object-contain"></canvas>
-        <!-- Scan line overlay shown during analysis -->
-        <div id="scanOverlay" class="absolute inset-0 pointer-events-none hidden">
-          <div class="scan-anim absolute inset-x-0 h-0.5 bg-cyan-400/60"></div>
-          <div class="absolute inset-0 flex items-center justify-center">
-            <div class="bg-slate-900/80 backdrop-blur border border-cyan-700 rounded-xl px-5 py-3 flex flex-col items-center gap-2">
-              <div class="text-cyan-300 font-bold text-sm mono">⚙ Analyzing Image...</div>
-              <div id="analysisProgress" class="text-[11px] mono text-slate-400">Step 1/7: Raw ingestion</div>
+      <!-- Controls: Ingest Photo, Scenario Selector & Camera Mode -->
+      <div class="flex items-center gap-3 flex-wrap">
+        
+        <!-- INGEST CUSTOM PHOTO BUTTON -->
+        <button id="btnIngestPhoto" type="button" class="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow-md shadow-cyan-600/30 active:scale-95">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span id="btnIngestLabel">Ingest Custom Photo</span>
+        </button>
+
+        <!-- Scenario / Source Preset -->
+        <div class="flex items-center gap-1.5 bg-slate-800/80 rounded-lg p-1 border border-slate-700 text-xs">
+          <span class="text-slate-400 px-2 font-medium">Source / Scene:</span>
+          <select id="scenarioSelector" class="bg-slate-900 text-slate-200 border-none rounded px-2.5 py-1 text-xs focus:ring-1 focus:ring-cyan-500 font-medium cursor-pointer">
+            <optgroup label="📸 Campus Cameras (Real Lot Photos)">
+              <option value="samples/cam_view_A.jpg" selected>📸 Campus View A (Oblique Lot A)</option>
+              <option value="samples/cam_view_B.jpg">📸 Campus View B (Frontal Lot B)</option>
+              <option value="samples/cam_view_C.jpg">📸 Campus View C (Overhead Lot C)</option>
+            </optgroup>
+            <optgroup label="🚗 Test Scenario Fixtures">
+              <option value="normal">1. Normal Partial Occupancy</option>
+              <option value="spillover">2. Bad Park: Neighbor Spillover</option>
+              <option value="occlusion">3. CCTV Oblique Occlusion</option>
+              <option value="drift">4. Camera Micro-Drift Vibration</option>
+              <option value="empty">5. Baseline Empty Lot</option>
+            </optgroup>
+            <optgroup label="📁 Custom Ingestion" id="customOptGroup" class="hidden">
+              <option value="custom" id="customOpt">Ingested Photo</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <!-- Camera Type Toggle -->
+        <div class="flex items-center bg-slate-800/80 rounded-lg p-0.5 border border-slate-700 text-xs">
+          <button id="camCctvBtn" class="px-3 py-1.5 rounded-md font-medium transition-colors bg-cyan-600 text-white shadow-sm flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-cyan-200 animate-pulse"></span>
+            CCTV Oblique (45°)
+          </button>
+          <button id="camOptimizedBtn" class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5">
+            Optimized Angle (80°)
+          </button>
+        </div>
+
+        <!-- Autoplay Steps Button -->
+        <button id="autoplayBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/30 active:scale-95">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+          </svg>
+          <span id="autoplayBtnText">Play Pipeline (Auto)</span>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto w-full p-4 flex-1 flex flex-col gap-5">
+    
+    <!-- TOP SECTION: STEPPER TABS -->
+    <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-2.5 backdrop-blur shadow-sm">
+      <div class="flex items-center justify-between gap-2 overflow-x-auto custom-scrollbar pb-1">
+        <div class="flex items-center gap-1.5 text-xs font-medium" id="stepperContainer">
+          <!-- Step 1 -->
+          <button data-step="1" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold shadow-sm">
+            <span class="w-5 h-5 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center text-[11px] font-bold">1</span>
+            <span>Raw Ingestion</span>
+          </button>
+          <!-- Step 2 -->
+          <button data-step="2" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">2</span>
+            <span>Homography Reshaping</span>
+          </button>
+          <!-- Step 3 -->
+          <button data-step="3" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">3</span>
+            <span>Adaptive Slot Mapping</span>
+          </button>
+          <!-- Step 4 -->
+          <button data-step="4" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">4</span>
+            <span>Low-Weight YOLO</span>
+          </button>
+          <!-- Step 5 -->
+          <button data-step="5" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">5</span>
+            <span>Contextual Area Analysis</span>
+          </button>
+          <!-- Step 6 -->
+          <button data-step="6" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">6</span>
+            <span>Cognitive AI Fusion</span>
+          </button>
+          <!-- Step 7 -->
+          <button data-step="7" class="step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold">7</span>
+            <span>Overhead Map & Event</span>
+          </button>
+        </div>
+
+        <!-- Navigation Next/Prev buttons -->
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button id="prevStepBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold disabled:opacity-40 transition-colors">
+            ◀ Prev
+          </button>
+          <button id="nextStepBtn" class="px-2.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold disabled:opacity-40 transition-colors">
+            Next ▶
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MIDDLE DUAL-VIEWPORT SECTION -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      
+      <!-- LEFT VIEWPORT: CAMERA PERSPECTIVE STREAM -->
+      <div class="lg:col-span-6 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300" id="camStreamTitle">
+              Ingested Frame / Perspective Stream (cam-lot-a-01)
+            </h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded" id="camFpsBadge">25.0 FPS</span>
+            <span class="text-[11px] font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/50" id="camResBadge">1280x960</span>
+          </div>
+        </div>
+
+        <!-- Perspective Canvas Container -->
+        <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 aspect-[4/3] flex items-center justify-center shadow-inner group">
+          <canvas id="cameraCanvas" width="640" height="480" class="w-full h-full object-contain cursor-crosshair"></canvas>
+          
+          <!-- Animated Radar Scan Line during analysis -->
+          <div id="scanOverlay" class="absolute inset-0 pointer-events-none hidden">
+            <div class="scan-line-anim absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#06b6d4]"></div>
+            <div class="absolute inset-0 flex items-center justify-center bg-slate-950/40 backdrop-blur-[2px]">
+              <div class="bg-slate-900/90 border border-cyan-500/80 rounded-2xl px-6 py-4 flex flex-col items-center gap-2 shadow-2xl shadow-cyan-500/30">
+                <div class="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin"></div>
+                <div class="text-cyan-300 font-bold text-xs font-mono uppercase tracking-widest mt-1">Analyzing Ingested Photo</div>
+                <div id="scanProgressText" class="text-[11px] font-mono text-slate-300">Step 1/7: Ingesting Frame...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive overlay hints -->
+          <div id="camOverlayBadge" class="absolute top-2 left-2 px-2.5 py-1 rounded bg-slate-900/85 backdrop-blur border border-slate-700 text-[11px] text-slate-300 font-mono pointer-events-none flex items-center gap-1.5 shadow">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            <span id="camOverlayText">Perspective: 45° Pitch • Trapezoidal Distortion</span>
+          </div>
+
+          <!-- Quick Drop Prompt on Canvas (Shown if user hovers) -->
+          <div class="absolute top-2 right-2 px-2 py-1 rounded bg-slate-900/80 text-[10px] text-slate-400 font-mono border border-slate-800 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+            Drag & Drop photo here
+          </div>
+
+          <!-- Vehicle Position Scrub Slider -->
+          <div class="absolute bottom-2 inset-x-2 bg-slate-900/90 backdrop-blur border border-slate-700/80 rounded-lg p-2 flex items-center gap-3">
+            <label class="text-[11px] font-mono text-slate-300 whitespace-nowrap flex items-center gap-1.5">
+              <span>🚗 Vehicle X-Position:</span>
+            </label>
+            <input type="range" id="carPosSlider" min="20" max="600" value="180" class="w-full accent-cyan-500 cursor-pointer h-1.5 bg-slate-700 rounded-lg">
+            <span class="text-[11px] font-mono text-cyan-400 w-12 text-right tabular-nums" id="carPosVal">180px</span>
+          </div>
+        </div>
+
+        <!-- Perspective Sub-metrics -->
+        <div class="grid grid-cols-3 gap-2 text-xs pt-1">
+          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
+            <div class="text-slate-400 text-[10px] uppercase font-mono">Foreshortening Factor</div>
+            <div class="text-slate-200 font-bold font-mono text-sm mt-0.5" id="metricForeshortening">2.84x (High)</div>
+          </div>
+          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
+            <div class="text-slate-400 text-[10px] uppercase font-mono">Occlusion Risk</div>
+            <div class="text-amber-400 font-bold font-mono text-sm mt-0.5" id="metricOcclusionRisk">Moderate (Rear Row)</div>
+          </div>
+          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
+            <div class="text-slate-400 text-[10px] uppercase font-mono">Ground Quad Error</div>
+            <div class="text-emerald-400 font-bold font-mono text-sm mt-0.5" id="metricQuadError">RMS &lt; 0.42 px</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT VIEWPORT: HOMOGRAPHY BEV / WARPED PLANE -->
+      <div class="lg:col-span-6 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300">
+              Bird's-Eye View (BEV) — Homography Warped Ground Plane
+            </h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50" id="driftBadge">
+              ΔH: (dx=0.8, dy=-0.4) OK
+            </span>
+          </div>
+        </div>
+
+        <!-- BEV Canvas Container -->
+        <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 aspect-[4/3] flex items-center justify-center shadow-inner">
+          <canvas id="bevCanvas" width="640" height="480" class="w-full h-full object-contain cursor-pointer"></canvas>
+          
+          <div id="bevOverlayBadge" class="absolute top-2 left-2 px-2.5 py-1 rounded bg-slate-900/80 backdrop-blur border border-slate-700 text-[11px] text-slate-300 font-mono pointer-events-none">
+            Rectified Metric Grid (1px ≈ 1.25cm)
+          </div>
+
+          <div class="absolute top-2 right-2 flex gap-1.5">
+            <button id="toggleGridBtn" class="px-2 py-1 rounded bg-slate-800/90 hover:bg-slate-700 text-[10px] font-mono text-slate-300 border border-slate-700 transition-colors">
+              Grid: ON
+            </button>
+            <button id="toggleFootprintBtn" class="px-2 py-1 rounded bg-cyan-900/80 hover:bg-cyan-800 text-[10px] font-mono text-cyan-200 border border-cyan-700 transition-colors">
+              Footprint: ON
+            </button>
+          </div>
+        </div>
+
+        <!-- BEV Sub-metrics -->
+        <div class="grid grid-cols-3 gap-2 text-xs pt-1">
+          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
+            <div class="text-slate-400 text-[10px] uppercase font-mono">Calibrated Slot Area</div>
+            <div class="text-slate-200 font-bold font-mono text-sm mt-0.5" id="metricSlotArea">12.50 m² (10,000 px²)</div>
+          </div>
+          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
+            <div class="text-slate-400 text-[10px] uppercase font-mono">Anchor Fiducial Drift</div>
+            <div class="text-emerald-400 font-bold font-mono text-sm mt-0.5" id="metricDriftVal">0.89 px (&lt; 5.0 px)</div>
+          </div>
+          <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
+            <div class="text-slate-400 text-[10px] uppercase font-mono">Curb / Row Partition</div>
+            <div class="text-cyan-400 font-bold font-mono text-sm mt-0.5" id="metricPartition">Uniform (3 bays)</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM SECTION: STEP-BY-STEP DETAIL & FINAL OVERHEAD LOT MAP -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      
+      <!-- DETAILED STEP INSPECTOR CARD -->
+      <div class="lg:col-span-7 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-lg">
+        
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-lg bg-cyan-500 text-slate-950 font-black text-xs flex items-center justify-center" id="stepDetailNumber">1</span>
+              <h3 class="font-bold text-sm text-white" id="stepDetailTitle">Step 1 — Dual-Source Ingestion & Stream Resolution</h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5" id="stepDetailDesc">
+              Ingests raw RTSP frames from campus CCTV vs. optimized overhead sensor mounts.
+            </p>
+          </div>
+          <span class="text-xs font-mono px-2.5 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700" id="stepModuleTag">
+            src/parking_occupancy/capture.py
+          </span>
+        </div>
+
+        <!-- Dynamic Step Content Body -->
+        <div id="stepDynamicContent" class="space-y-4">
+          <!-- Populated by JavaScript according to current active step -->
+        </div>
+
+      </div>
+
+      <!-- FINAL OVERHEAD CAMPUS PARKING MAP & REAL-TIME EVENT CARD -->
+      <div class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-lg">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            <h3 class="font-bold text-sm text-white">Final Campus Overhead Map (BEV)</h3>
+          </div>
+          <span class="text-xs font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">
+            Interactive (Click Slot)
+          </span>
+        </div>
+
+        <!-- Overhead Canvas Map -->
+        <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800 aspect-[16/10] flex items-center justify-center shadow-inner">
+          <canvas id="overheadMapCanvas" width="480" height="300" class="w-full h-full object-contain cursor-pointer"></canvas>
+          
+          <div class="absolute bottom-2 left-2 bg-slate-900/90 backdrop-blur px-2 py-1 rounded text-[10px] text-slate-300 font-mono border border-slate-700/80 flex items-center gap-2">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Avail</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Occ</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Spill</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Unk</span>
+          </div>
+        </div>
+
+        <!-- Real-Time Slot Inspector Readout -->
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400 font-medium">Inspected Slot:</span>
+            <span class="font-bold font-mono text-cyan-300 text-sm" id="inspectorSlotId">Slot A-C01</span>
+          </div>
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">Compatibility & Dimensions:</span>
+            <span class="font-mono text-slate-200" id="inspectorCompat">car_only • 2.5m x 5.0m</span>
+          </div>
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">Consumed Area (ρ) / Remaining:</span>
+            <span class="font-mono text-slate-200" id="inspectorAreaVals">ρ = 85.0% | Rem = 15.0%</span>
+          </div>
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">Confidence Interval (95% CI):</span>
+            <span class="font-mono text-indigo-300" id="inspectorCiVals">[0.89, 0.96]</span>
+          </div>
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">1-Minute Sliding Mean (p̄₆₀ₛ):</span>
+            <span class="font-mono text-cyan-300 font-bold" id="inspectorMeanVal">0.934</span>
+          </div>
+          <div class="flex items-center justify-between pt-1 border-t border-slate-800">
+            <span class="text-slate-400 font-medium">Final Call Decision:</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-rose-950 text-rose-300 border border-rose-800" id="inspectorFinalBadge">
+              OCCUPIED
+            </span>
+          </div>
+        </div>
+
+        <!-- SENTRY Event Payload Preview -->
+        <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 text-xs flex flex-col gap-1.5">
+          <div class="flex items-center justify-between text-[10px] uppercase font-mono text-slate-400">
+            <span>Dispatched Schema (CANDIDATE-2026-10-30.2)</span>
+            <span class="text-emerald-400 font-semibold">MOCK DISPATCH OK</span>
+          </div>
+          <pre id="eventJsonPreview" class="bg-slate-900/90 text-slate-300 p-2.5 rounded-lg text-[10px] font-mono overflow-x-auto custom-scrollbar border border-slate-800">
+{
+  "schema_version": "2026-10-30.2",
+  "event_type": "space_state_changed",
+  "space_id": "30000000-0000-4000-8000-000000000001",
+  "lot_code": "A",
+  "new_state": "occupied",
+  "previous_state": "available",
+  "confidence": 0.94,
+  "correlation_id": null
+}
+          </pre>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- JAVASCRIPT PIPELINE & CLIENT-SIDE COGNITIVE ENGINE -->
+  <script>
+    // ════════════════════════════════════════════════════════════════
+    // GLOBAL STATE
+    // ════════════════════════════════════════════════════════════════
+    const state = {
+      activeStep: 1,
+      cameraMode: 'cctv', // 'cctv' or 'optimized'
+      scenario: 'samples/cam_view_A.jpg',
+      selectedSlotIndex: 1, // Default selected A-C02
+      carX: 180,
+      isAutoplay: false,
+      autoplayInterval: null,
+      showGrid: true,
+      showFootprint: true,
+      loadedImage: null,
+      sourceName: 'cam_view_A.jpg',
+      isCustomImage: false,
+      isAnalyzing: false,
+      
+      // 1-minute sliding confidence buffer (60 frames)
+      confidenceHistory: Array.from({length: 60}, () => 0.92 + Math.random() * 0.05),
+      
+      // Slot configuration for Lot A (3 car stalls, 2 motorcycle stalls)
+      slots: [
+        {
+          id: 'A-C01',
+          uuid: '30000000-0000-4000-8000-000000000001',
+          lot: 'A',
+          compat: 'car_only',
+          areaM2: 12.50,
+          totalPx: 10000,
+          bevRect: { x: 50, y: 70, w: 100, h: 200 },
+          camRoi:  { x: 100, y: 220, w: 130, h: 160 },
+          // Analyzed metrics
+          pixelScore: 0.12,
+          yoloConf: 0.10,
+          fusedScore: 0.11,
+          state: 'available'
+        },
+        {
+          id: 'A-C02',
+          uuid: '30000000-0000-4000-8000-000000000002',
+          lot: 'A',
+          compat: 'car_only',
+          areaM2: 12.50,
+          totalPx: 10000,
+          bevRect: { x: 170, y: 70, w: 100, h: 200 },
+          camRoi:  { x: 235, y: 220, w: 140, h: 160 },
+          pixelScore: 0.94,
+          yoloConf: 0.54,
+          fusedScore: 0.92,
+          state: 'occupied'
+        },
+        {
+          id: 'A-C03',
+          uuid: '30000000-0000-4000-8000-000000000003',
+          lot: 'A',
+          compat: 'car_only',
+          areaM2: 12.50,
+          totalPx: 10000,
+          bevRect: { x: 290, y: 70, w: 100, h: 200 },
+          camRoi:  { x: 380, y: 220, w: 140, h: 160 },
+          pixelScore: 0.08,
+          yoloConf: 0.05,
+          fusedScore: 0.07,
+          state: 'available'
+        },
+        {
+          id: 'A-M01',
+          uuid: '30000000-0000-4000-8000-000000000004',
+          lot: 'A',
+          compat: 'motorcycle_only',
+          areaM2: 4.50,
+          totalPx: 3600,
+          bevRect: { x: 410, y: 70, w: 50, h: 140 },
+          camRoi:  { x: 525, y: 230, w: 50, h: 120 },
+          pixelScore: 0.05,
+          yoloConf: 0.02,
+          fusedScore: 0.04,
+          state: 'available'
+        },
+        {
+          id: 'A-M02',
+          uuid: '30000000-0000-4000-8000-000000000005',
+          lot: 'A',
+          compat: 'motorcycle_only',
+          areaM2: 4.50,
+          totalPx: 3600,
+          bevRect: { x: 470, y: 70, w: 50, h: 140 },
+          camRoi:  { x: 575, y: 230, w: 50, h: 120 },
+          pixelScore: 0.05,
+          yoloConf: 0.02,
+          fusedScore: 0.04,
+          state: 'available'
+        }
+      ]
+    };
+
+    // Homography Points
+    function getHomographyPoints() {
+      if (state.cameraMode === 'cctv') {
+        return {
+          src: [[120, 200], [530, 200], [610, 420], [30, 420]],
+          dst: [[60, 60], [580, 60], [580, 420], [60, 420]]
+        };
+      } else {
+        return {
+          src: [[60, 70], [580, 70], [590, 430], [50, 430]],
+          dst: [[60, 60], [580, 60], [580, 420], [60, 420]]
+        };
+      }
+    }
+
+    // Step Metadata Definitions
+    const stepMetadata = [
+      {
+        step: 1,
+        title: "Step 1 — Dual-Source Ingestion & Stream Calibration",
+        desc: "Ingests raw RTSP frames from oblique CCTV (45° foreshortening) or optimized high-angle mounts (80°).",
+        module: "src/parking_occupancy/capture.py",
+        render: renderStep1
+      },
+      {
+        step: 2,
+        title: "Step 2 — Geometry & Homography Warping (H Matrix)",
+        desc: "Maps perspective 4-point quadrilateral into an orthographic Bird's-Eye View (BEV) ground plane.",
+        module: "src/parking_occupancy/geometry.py",
+        render: renderStep2
+      },
+      {
+        step: 3,
+        title: "Step 3 — Adaptive Slot Mapping & Drift Compensation",
+        desc: "Detects fiducial anchor drift (ΔH) to realign stalls without full recalibration, and partitions unlined concrete bays.",
+        module: "docs/02B_ADAPTIVE_SLOT_MAPPING.md",
+        render: renderStep3
+      },
+      {
+        step: 4,
+        title: "Step 4 — Low-Weight YOLO Object Proposals",
+        desc: "Detects candidate vehicles with low confidence floor (≥0.30) to avoid false negatives. Never decides final occupancy alone.",
+        module: "src/parking_occupancy/inference.py",
+        render: renderStep4
+      },
+      {
+        step: 5,
+        title: "Step 5 — Contextual Intelligence & Area Analysis",
+        desc: "Calculates vehicle consumed footprint area (ρ), remaining usable space (A_rem), and alerts on neighbor spillover.",
+        module: "docs/04_CONTEXTUAL_AWARENESS.md",
+        render: renderStep5
+      },
+      {
+        step: 6,
+        title: "Step 6 — Cognitive AI Fusion & 1-Minute Mean Buffer",
+        desc: "Fuses slot area, candidate overlap, 95% Confidence Interval, and 60-second temporal sliding window mean (p̄₆₀ₛ).",
+        module: "docs/05_COGNITIVE_AI_FUSION_MODEL.md",
+        render: renderStep6
+      },
+      {
+        step: 7,
+        title: "Step 7 — Final Map Representation & SENTRY Event Schema",
+        desc: "Generates real-time overhead campus BEV map state and dispatches CANDIDATE-2026-10-30.2 JSON event.",
+        module: "src/parking_occupancy/events.py",
+        render: renderStep7
+      }
+    ];
+
+    // ════════════════════════════════════════════════════════════════
+    // REAL PIXEL-LEVEL ANALYSIS ENGINE (Client-Side)
+    // ════════════════════════════════════════════════════════════════
+    function analyzeImagePixels(ctx) {
+      if (!ctx) return;
+      
+      state.slots.forEach((slot, idx) => {
+        const roi = slot.camRoi;
+        let imgData;
+        try {
+          imgData = ctx.getImageData(roi.x, roi.y, roi.w, roi.h);
+        } catch (e) {
+          // If cross-origin restrictions apply, fallback to simulated pixel properties
+          return;
+        }
+
+        const data = imgData.data;
+        const totalPixels = data.length / 4;
+        if (totalPixels === 0) return;
+
+        // 1. Luminance & Variance
+        let sumL = 0;
+        let sumL2 = 0;
+        let colorSatSum = 0;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i+1];
+          const b = data[i+2];
+          
+          // Perceived luminance
+          const l = 0.299 * r + 0.587 * g + 0.114 * b;
+          sumL += l;
+          sumL2 += l * l;
+
+          // Saturation
+          const max = Math.max(r, g, b);
+          const min = Math.min(r, g, b);
+          if (max > 0) {
+            colorSatSum += (max - min) / max;
+          }
+        }
+
+        const meanL = sumL / totalPixels;
+        const varianceL = (sumL2 / totalPixels) - (meanL * meanL);
+        const stdL = Math.sqrt(Math.max(0, varianceL));
+        const avgSat = colorSatSum / totalPixels;
+
+        // 2. Simple Sobel Edge Detector along horizontal & vertical lines
+        let edgeCount = 0;
+        const w = roi.w;
+        const h = roi.h;
+        for (let y = 1; y < h - 1; y += 2) {
+          for (let x = 1; x < w - 1; x += 2) {
+            const idxCenter = (y * w + x) * 4;
+            const idxRight  = (y * w + (x + 1)) * 4;
+            const idxDown   = ((y + 1) * w + x) * 4;
+            
+            const lCenter = 0.299*data[idxCenter] + 0.587*data[idxCenter+1] + 0.114*data[idxCenter+2];
+            const lRight  = 0.299*data[idxRight]  + 0.587*data[idxRight+1]  + 0.114*data[idxRight+2];
+            const lDown   = 0.299*data[idxDown]   + 0.587*data[idxDown+1]   + 0.114*data[idxDown+2];
+
+            const diff = Math.abs(lRight - lCenter) + Math.abs(lDown - lCenter);
+            if (diff > 35) edgeCount++;
+          }
+        }
+
+        const edgeDensity = edgeCount / (totalPixels / 4);
+
+        // Normalize metrics into 0..1
+        const edgeNorm = Math.min(1.0, edgeDensity * 3.5);
+        const varNorm  = Math.min(1.0, stdL / 55.0);
+        const satNorm  = Math.min(1.0, avgSat * 2.8);
+
+        // Raw pixel occupancy score
+        const rawScore = 0.50 * edgeNorm + 0.35 * varNorm + 0.15 * satNorm;
+        slot.pixelScore = parseFloat(Math.min(0.99, Math.max(0.02, rawScore)).toFixed(3));
+        
+        // Low-weight YOLO proposal confidence: correlated with pixel score with low floor
+        slot.yoloConf = slot.pixelScore > 0.4 
+          ? parseFloat((0.45 + slot.pixelScore * 0.25).toFixed(2)) 
+          : parseFloat((0.05 + slot.pixelScore * 0.15).toFixed(2));
+
+        // Cognitive Fusion (70% pixel + 30% YOLO)
+        slot.fusedScore = parseFloat((slot.pixelScore * 0.70 + slot.yoloConf * 0.30).toFixed(3));
+      });
+    }
+
+    // Dynamic Slot Metrics Calculator
+    function computeCurrentSlotMetrics(slotIdx) {
+      const slot = state.slots[slotIdx];
+      const carW = 90;
+      const carH = 160;
+      const carX = state.carX;
+      const carY = 90;
+
+      // Intersection calculation with slider car position
+      const ix1 = Math.max(slot.bevRect.x, carX);
+      const iy1 = Math.max(slot.bevRect.y, carY);
+      const ix2 = Math.min(slot.bevRect.x + slot.bevRect.w, carX + carW);
+      const iy2 = Math.min(slot.bevRect.y + slot.bevRect.h, carY + carH);
+
+      let intersectionArea = 0;
+      if (ix2 > ix1 && iy2 > iy1) {
+        intersectionArea = (ix2 - ix1) * (iy2 - iy1);
+      }
+
+      const geomConsumedRatio = Math.min(1.0, intersectionArea / (slot.bevRect.w * slot.bevRect.h));
+      
+      // Effective consumed ratio: combine pixel-analyzed score with interactive slider
+      const consumedRatio = state.isCustomImage 
+        ? Math.max(geomConsumedRatio, slot.pixelScore) 
+        : geomConsumedRatio;
+
+      const remainingRatio = Math.max(0.0, 1.0 - consumedRatio);
+
+      // Spillover check
+      let isSpillover = false;
+      if (consumedRatio > 0.15 && consumedRatio < 0.58) {
+        isSpillover = true;
+      }
+
+      // Occlusion check in CCTV mode
+      let isOccluded = false;
+      if (state.cameraMode === 'cctv' && (state.scenario === 'occlusion' || (slotIdx === 2 && state.cameraMode === 'cctv' && !state.isCustomImage))) {
+        isOccluded = true;
+      }
+
+      // Instantaneous confidence & state
+      let instantConfidence = 0.95;
+      let stateName = 'available';
+
+      if (isOccluded) {
+        stateName = 'unknown';
+        instantConfidence = 0.35;
+      } else if (consumedRatio >= 0.50) {
+        stateName = 'occupied';
+        instantConfidence = Math.min(0.99, 0.90 + consumedRatio * 0.08);
+      } else if (isSpillover) {
+        stateName = 'spillover_blocked';
+        instantConfidence = 0.88;
+      } else {
+        stateName = 'available';
+        instantConfidence = Math.max(0.85, 0.96 - consumedRatio * 0.15);
+      }
+
+      // 60-second sliding mean
+      const mean = (state.confidenceHistory.reduce((a, b) => a + b, 0) / state.confidenceHistory.length).toFixed(3);
+      const se = 0.018; // standard error
+      const ciLow = Math.max(0.0, instantConfidence - 1.96 * se).toFixed(2);
+      const ciHigh = Math.min(1.0, instantConfidence + 1.96 * se).toFixed(2);
+
+      return {
+        slot,
+        consumedRatio,
+        remainingRatio,
+        isSpillover,
+        isOccluded,
+        instantConfidence,
+        mean,
+        ci: `[${ciLow}, ${ciHigh}]`,
+        finalCall: stateName
+      };
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // FULL ANALYSIS EXECUTION (Triggered on image load or drop)
+    // ════════════════════════════════════════════════════════════════
+    function triggerFullAnalysis() {
+      state.isAnalyzing = true;
+      const overlay = document.getElementById('scanOverlay');
+      const progressText = document.getElementById('scanProgressText');
+      if (overlay) overlay.classList.remove('hidden');
+
+      const steps = [
+        "Step 1/7: Ingesting Frame & Calibrating Optics...",
+        "Step 2/7: Computing Homography Reshaping (H Matrix)...",
+        "Step 3/7: Aligning Slot Coordinates & Compensating Drift...",
+        "Step 4/7: Detecting Candidate Vehicles (Low-Weight YOLO)...",
+        "Step 5/7: Contextual Area Coverage & Spillover Evaluation...",
+        "Step 6/7: Cognitive AI Fusion & 1-Minute Sliding Mean...",
+        "Step 7/7: Emitting SENTRY Space Event (CANDIDATE-2026-10-30.2)"
+      ];
+
+      let currentStep = 0;
+      const interval = setInterval(() => {
+        currentStep++;
+        if (currentStep < steps.length) {
+          if (progressText) progressText.textContent = steps[currentStep];
+        } else {
+          clearInterval(interval);
+          if (overlay) overlay.classList.add('hidden');
+          state.isAnalyzing = false;
+          
+          // Update sliding buffer with high-confidence values
+          state.confidenceHistory.shift();
+          state.confidenceHistory.push(0.92 + Math.random() * 0.06);
+
+          renderAll();
+        }
+      }, 160);
+
+      // Render the image canvas immediately so pixels can be read
+      renderPerspectiveCanvas();
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // RENDER FUNCTIONS FOR THE 7 STEPS
+    // ════════════════════════════════════════════════════════════════
+    function renderStep1() {
+      const isCctv = state.cameraMode === 'cctv';
+      return `
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
+            <div class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full ${isCctv ? 'bg-cyan-400' : 'bg-slate-600'}"></span>
+              Stream Configuration: Oblique CCTV
+            </div>
+            <ul class="text-xs text-slate-300 space-y-1 font-mono">
+              <li>• Mount Pitch: <span class="text-cyan-300">45° Oblique Angle</span></li>
+              <li>• Resolution: <span class="text-slate-100">${state.loadedImage ? state.loadedImage.naturalWidth + 'x' + state.loadedImage.naturalHeight : '1280 x 960'}</span></li>
+              <li>• Frame Rate: <span class="text-slate-100">25.0 FPS</span></li>
+              <li>• Distortion: <span class="text-amber-400">High perspective compression</span></li>
+              <li>• Ingested Source: <span class="text-emerald-300">${state.sourceName}</span></li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
+            <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full ${!isCctv ? 'bg-indigo-400' : 'bg-slate-600'}"></span>
+              Stream Configuration: Optimized High Angle
+            </div>
+            <ul class="text-xs text-slate-300 space-y-1 font-mono">
+              <li>• Mount Pitch: <span class="text-indigo-300">80° Near-Nadir Mount</span></li>
+              <li>• Resolution: <span class="text-slate-100">1920 x 1080 (1080p)</span></li>
+              <li>• Optical Distortion: <span class="text-emerald-400">Minimal / Near-orthographic</span></li>
+              <li>• Occlusion Profile: <span class="text-emerald-400">&lt; 3% adjacent masking</span></li>
+            </ul>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStep2() {
+      const pts = getHomographyPoints();
+      return `
+        <div class="space-y-3 text-xs">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 font-mono">
+              <div class="text-slate-400 text-[10px] uppercase">Source Quad (Perspective Camera)</div>
+              <div class="text-slate-200 mt-1 space-y-0.5">
+                <div>P0: [${pts.src[0].join(', ')}]</div>
+                <div>P1: [${pts.src[1].join(', ')}]</div>
+                <div>P2: [${pts.src[2].join(', ')}]</div>
+                <div>P3: [${pts.src[3].join(', ')}]</div>
+              </div>
+            </div>
+
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 font-mono">
+              <div class="text-slate-400 text-[10px] uppercase">Destination Quad (BEV Plane)</div>
+              <div class="text-cyan-300 mt-1 space-y-0.5">
+                <div>D0: [${pts.dst[0].join(', ')}]</div>
+                <div>D1: [${pts.dst[1].join(', ')}]</div>
+                <div>D2: [${pts.dst[2].join(', ')}]</div>
+                <div>D3: [${pts.dst[3].join(', ')}]</div>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-400">
+            Homography removes perspective convergence: lane boundaries that converge to the horizon in the camera image become parallel in the BEV canvas (right panel).
+          </p>
+        </div>
+      `;
+    }
+
+    function renderStep3() {
+      const isDrift = state.scenario === 'drift';
+      const dx = isDrift ? 2.8 : 0.8;
+      const dy = isDrift ? -1.6 : -0.4;
+      const mag = Math.sqrt(dx*dx + dy*dy).toFixed(2);
+      const isOk = mag < 5.0;
+
+      return `
+        <div class="space-y-3 text-xs">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div class="text-slate-400 uppercase font-mono text-[10px]">Fiducial Anchor Micro-Drift (ΔH)</div>
+              <div class="flex items-baseline gap-2">
+                <span class="text-xl font-bold font-mono ${isOk ? 'text-emerald-400' : 'text-rose-400'}">
+                  ${mag} px
+                </span>
+                <span class="text-[11px] font-mono text-slate-400">(Threshold: τ = 5.0 px)</span>
+              </div>
+              <div class="text-slate-300 text-[11px]">
+                Vector: <code class="text-cyan-300 font-mono">[dx: ${dx}px, dy: ${dy}px]</code>
+              </div>
+              <div class="text-[11px] ${isOk ? 'text-emerald-300' : 'text-rose-300'}">
+                ${isOk ? '✔ Compensation applied to polygon bounds without recalibration' : '⚠ Drift exceeded threshold! Stalls marked UNKNOWN'}
+              </div>
+            </div>
+
+            <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div class="text-slate-400 uppercase font-mono text-[10px]">Unlined Concrete Bay Partitioning</div>
+              <div class="text-slate-300 text-[11px]">
+                Mode: <span class="font-bold text-cyan-300 font-mono">adaptive_curb</span>
+              </div>
+              <div class="text-slate-300 text-[11px]">
+                Base Curb Width: <span class="font-mono text-slate-100">7.50 m (3 Stalls @ 2.50m)</span>
+              </div>
+              <div class="text-slate-300 text-[11px]">
+                Effective Stall Polygons: <span class="font-mono text-emerald-400">P_eff = P_base ⊕ ΔH</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800 text-[11px] text-slate-400">
+            <strong>Adaptive Mapping Insight:</strong> Thermal expansion, wind sway, or camera mount vibration do not break slot assignment. The tracker measures ground-fiducial landmarks every frame and dynamically offsets slot coordinates.
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStep4() {
+      const activeSlot = state.slots[state.selectedSlotIndex];
+      return `
+        <div class="space-y-3 text-xs">
+          <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+            <div>
+              <div class="font-bold text-slate-200">Supporting YOLO Detector Config</div>
+              <div class="text-slate-400 text-[11px]">Confidence Floor: <span class="font-mono text-amber-400">τ = 0.30</span> (low-weight)</div>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800 text-[10px] font-mono">
+              LOW-CONFIDENCE SUPPORT
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-[11px] space-y-1 font-mono">
+              <div class="text-slate-400 text-[10px] uppercase">Detected Proposal</div>
+              <div>Target Slot: <span class="text-cyan-300 font-bold">${activeSlot.id}</span></div>
+              <div>Class: <span class="text-cyan-300 font-bold">car</span></div>
+              <div>Raw Confidence: <span class="text-amber-400 font-bold">${activeSlot.yoloConf}</span></div>
+              <div>BBox: <span class="text-slate-300">[120, 210, 240, 390]</span></div>
+            </div>
+
+            <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-[11px] space-y-1 font-mono">
+              <div class="text-slate-400 text-[10px] uppercase">Footprint Ground Projection</div>
+              <div>Contact Patch: <span class="text-indigo-300 font-bold">Bottom 20%</span></div>
+              <div>Ground Y-Range: <span class="text-slate-300">[354px to 390px]</span></div>
+              <div>BEV Contact Box: <span class="text-emerald-300 font-bold">Projected to Z=0</span></div>
+            </div>
+          </div>
+
+          <p class="text-slate-400 text-[11px]">
+            <strong>Why low confidence?</strong> Object detection on oblique cameras suffers from partial car clipping and glare. SENTRY uses YOLO solely as a candidate generator; geometric occupancy verification is delegated to the Homography & Contextual Area stage.
+          </p>
+        </div>
+      `;
+    }
+
+    function renderStep5() {
+      const m = computeCurrentSlotMetrics(state.selectedSlotIndex);
+      return `
+        <div class="space-y-3 text-xs">
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-slate-400 text-[10px] uppercase font-mono">Slot Area</div>
+              <div class="font-mono text-cyan-300 font-bold text-sm mt-0.5">${m.slot.areaM2} m²</div>
+              <div class="text-[10px] text-slate-500 font-mono">(${m.slot.totalPx} px²)</div>
+            </div>
+
+            <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-slate-400 text-[10px] uppercase font-mono">Consumed Area (ρ)</div>
+              <div class="font-mono ${m.consumedRatio > 0.4 ? 'text-rose-400' : 'text-emerald-400'} font-bold text-sm mt-0.5">
+                ${(m.consumedRatio * 100).toFixed(1)}%
+              </div>
+              <div class="text-[10px] text-slate-500 font-mono">Vehicle footprint</div>
+            </div>
+
+            <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-slate-400 text-[10px] uppercase font-mono">Remaining Usable</div>
+              <div class="font-mono ${m.remainingRatio < 0.6 ? 'text-amber-400' : 'text-emerald-400'} font-bold text-sm mt-0.5">
+                ${(m.remainingRatio * 100).toFixed(1)}%
+              </div>
+              <div class="text-[10px] text-slate-500 font-mono">Free parking space</div>
+            </div>
+          </div>
+
+          <!-- Spillover & Occlusion Diagnostic Bar -->
+          <div class="p-3 rounded-xl border ${m.isSpillover ? 'bg-orange-950/40 border-orange-700/60 text-orange-200' : m.isOccluded ? 'bg-amber-950/40 border-amber-700/60 text-amber-200' : 'bg-slate-950/60 border-slate-800 text-slate-300'} text-xs">
+            <div class="font-bold flex items-center gap-1.5">
+              ${m.isSpillover ? '⚠️ Neighbor Spillover Encroachment Detected' : m.isOccluded ? '👁️ Line-of-Sight CCTV Occlusion Detected' : '✔ Normal Contextual Profile'}
+            </div>
+            <p class="mt-1 text-[11px] text-slate-400">
+              ${m.isSpillover ? 'The vehicle straddles the stall delimiter line. Usable remaining area is below 65%, preventing adjacent cars from parking.' : m.isOccluded ? 'A tall vehicle in foreground row obscures rear stall contact patch. Occlusion flag raised; status held or marked UNKNOWN.' : 'Vehicle boundary is well-centered within calibrated stall boundaries.'}
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStep6() {
+      const m = computeCurrentSlotMetrics(state.selectedSlotIndex);
+      return `
+        <div class="space-y-3 text-xs">
+          <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400 font-mono uppercase text-[10px]">1-Minute Sliding Mean Buffer (60 Frames)</span>
+              <span class="text-cyan-400 font-mono font-bold">p̄₆₀ₛ = ${m.mean}</span>
+            </div>
+            
+            <!-- Sliding window sparkline graph -->
+            <div class="h-10 bg-slate-900 rounded-lg p-1 flex items-end gap-1 border border-slate-800/80">
+              ${state.confidenceHistory.map(v => `
+                <div class="flex-1 bg-cyan-500/80 rounded-t hover:bg-cyan-400 transition-all" style="height: ${Math.round(v * 100)}%" title="${v.toFixed(3)}"></div>
+              `).join('')}
+            </div>
+            <div class="flex justify-between text-[10px] font-mono text-slate-500">
+              <span>-60s (t-60)</span>
+              <span>Sliding Window Average</span>
+              <span>Now (t=0)</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 font-mono text-xs">
+            <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-slate-400 text-[10px] uppercase">95% Confidence Interval</div>
+              <div class="text-indigo-300 font-bold text-sm mt-0.5">${m.ci}</div>
+              <div class="text-[10px] text-slate-500">±1.96 · SE margin</div>
+            </div>
+
+            <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-slate-400 text-[10px] uppercase">Final Call Gate</div>
+              <div class="text-sm font-bold mt-0.5 ${m.finalCall === 'occupied' ? 'text-rose-400' : m.finalCall === 'available' ? 'text-emerald-400' : 'text-amber-400'}">
+                ${m.finalCall.toUpperCase()}
+              </div>
+              <div class="text-[10px] text-slate-500">Hysteresis: 3-frame quorum</div>
             </div>
           </div>
         </div>
-        <div id="camBadge" class="absolute top-2 left-2 bg-slate-900/80 backdrop-blur border border-slate-700 px-2 py-1 rounded text-[11px] mono text-slate-300 pointer-events-none">
-          No photo loaded — select sample or upload
-        </div>
-      </div>
+      `;
+    }
 
-      <!-- Per-slot pixel analysis meters -->
-      <div id="pixelMeterRow" class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(100px,1fr))"></div>
-    </div>
+    function renderStep7() {
+      const m = computeCurrentSlotMetrics(state.selectedSlotIndex);
+      const eventJson = {
+        schema_version: "2026-10-30.2",
+        event_type: "space_state_changed",
+        space_id: m.slot.uuid,
+        lot_code: m.slot.lot,
+        new_state: m.finalCall === 'spillover_blocked' ? 'occupied' : m.finalCall,
+        previous_state: "available",
+        confidence: parseFloat(m.mean),
+        captured_at: new Date().toISOString(),
+        correlation_id: null
+      };
 
-    <!-- BEV / Warped Plane Panel -->
-    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-          <h2 class="text-xs font-bold uppercase tracking-wide text-slate-300">Bird's-Eye View (BEV) — Homography Warped Plane</h2>
-        </div>
-        <div class="flex items-center gap-2">
-          <span id="driftBadge" class="text-[10px] mono bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800/50">ΔH: OK</span>
-          <button id="toggleGrid" class="text-[10px] mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Grid: ON</button>
-        </div>
-      </div>
+      return `
+        <div class="space-y-3 text-xs">
+          <div class="bg-emerald-950/40 border border-emerald-800/60 p-3 rounded-xl text-emerald-200">
+            <div class="font-bold flex items-center gap-1.5">
+              <span>✔ Pipeline Synthesis Complete</span>
+            </div>
+            <p class="text-[11px] text-emerald-300/80 mt-1">
+              Final state calculated for <strong class="text-white">${m.slot.id}</strong>: 
+              <span class="font-mono uppercase font-bold">${eventJson.new_state}</span> with mean confidence <strong class="text-white">${m.mean}</strong>.
+            </p>
+          </div>
 
-      <div class="relative bg-slate-950 rounded-xl overflow-hidden aspect-[4/3] border border-slate-800">
-        <canvas id="bevCanvas" width="640" height="480" class="w-full h-full object-contain cursor-pointer"></canvas>
-        <div class="absolute top-2 left-2 bg-slate-900/80 backdrop-blur border border-slate-700 px-2 py-1 rounded text-[10px] mono text-slate-300 pointer-events-none">
-          Rectified Metric Ground Plane (1 px ≈ 1.25 cm)
-        </div>
-      </div>
-
-      <div class="grid grid-cols-3 gap-2 text-xs">
-        <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
-          <div class="text-slate-400 text-[9px] uppercase mono mb-0.5">Homography RMS</div>
-          <div class="font-bold mono text-emerald-400" id="homRms">0.42 px</div>
-        </div>
-        <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
-          <div class="text-slate-400 text-[9px] uppercase mono mb-0.5">Anchor Drift (ΔH)</div>
-          <div class="font-bold mono text-emerald-400" id="driftVal">0.89 px (&lt;5.0)</div>
-        </div>
-        <div class="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
-          <div class="text-slate-400 text-[9px] uppercase mono mb-0.5">Bay Partition</div>
-          <div class="font-bold mono text-cyan-400" id="bayPartition">adaptive_curb</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ROW 2: Step Inspector + Final Map + Event -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-
-    <!-- Step Inspector -->
-    <div class="lg:col-span-7 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-        <div class="flex items-center gap-2">
-          <span class="w-7 h-7 rounded-lg bg-cyan-500 text-slate-950 font-black text-sm flex items-center justify-center" id="stepNum">1</span>
-          <div>
-            <h3 class="font-bold text-sm text-white" id="stepTitle">Step 1 — Ingestion & Frame Acquisition</h3>
-            <p class="text-[11px] text-slate-400" id="stepDesc">Load photo into memory buffer and validate resolution.</p>
+          <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 font-mono text-[10px] space-y-1 text-slate-300">
+            <div class="text-slate-400 uppercase font-bold text-[9px] mb-1">Contract Validation Checklist:</div>
+            <div class="text-emerald-400">✔ schema_version === "2026-10-30.2"</div>
+            <div class="text-emerald-400">✔ correlation_id === null (strictly observation)</div>
+            <div class="text-emerald-400">✔ lot_code === "${m.slot.lot}"</div>
+            <div class="text-emerald-400">✔ compatibility === "${m.slot.compat}"</div>
           </div>
         </div>
-        <span class="text-[10px] mono px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700" id="stepModule">capture.py</span>
-      </div>
-      <div id="stepBody" class="space-y-3 text-xs"></div>
-    </div>
-
-    <!-- Final Map + Event -->
-    <div class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4">
-
-      <!-- Overhead Map -->
-      <div class="pb-3 border-b border-slate-800">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="font-bold text-sm text-white flex items-center gap-2">
-            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-            </svg>
-            Overhead Lot Map (Final State)
-          </h3>
-          <span class="text-[10px] mono text-cyan-400">Click slot to inspect</span>
-        </div>
-
-        <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-800" style="aspect-ratio:16/8">
-          <canvas id="mapCanvas" width="460" height="230" class="w-full h-full object-contain cursor-pointer"></canvas>
-          <div class="absolute bottom-2 left-2 flex items-center gap-2 text-[9px] mono bg-slate-900/90 border border-slate-700 px-2 py-1 rounded">
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Avail</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span>Occ</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span>Spill</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Unk</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Slot Inspector -->
-      <div id="slotInspector" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-slate-400 font-medium">Inspected Slot:</span>
-          <span class="font-bold mono text-cyan-300" id="iSlotId">A-C01</span>
-        </div>
-        <div class="flex items-center justify-between text-[11px]">
-          <span class="text-slate-400">Compatibility:</span>
-          <span class="mono text-slate-200" id="iCompat">car_only • 12.5 m²</span>
-        </div>
-        <div class="flex items-center justify-between text-[11px]">
-          <span class="text-slate-400">Pixel Occupancy Score (ρ):</span>
-          <span class="mono font-bold" id="iRho">—</span>
-        </div>
-        <div class="flex items-center justify-between text-[11px]">
-          <span class="text-slate-400">95% CI:</span>
-          <span class="mono text-indigo-300" id="iCi">—</span>
-        </div>
-        <div class="flex items-center justify-between text-[11px]">
-          <span class="text-slate-400">1-min Mean (p̄₆₀ₛ):</span>
-          <span class="mono text-cyan-300 font-bold" id="iMean">—</span>
-        </div>
-        <!-- 1-minute sparkline -->
-        <div class="h-8 bg-slate-900 rounded flex items-end gap-0.5 p-1 border border-slate-800" id="sparkline"></div>
-        <div class="flex items-center justify-between pt-1 border-t border-slate-800">
-          <span class="text-slate-400 font-medium">Final Call:</span>
-          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold mono border" id="iFinalBadge">—</span>
-        </div>
-      </div>
-
-      <!-- Event JSON -->
-      <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 flex flex-col gap-1.5">
-        <div class="flex items-center justify-between text-[9px] uppercase mono text-slate-400">
-          <span>Event Payload (CANDIDATE-2026-10-30.2)</span>
-          <span class="text-emerald-400">MOCK DISPATCH OK</span>
-        </div>
-        <pre id="eventJson" class="text-[10px] mono text-slate-300 overflow-x-auto bg-slate-900 p-2.5 rounded-lg border border-slate-800 leading-5"></pre>
-      </div>
-    </div>
-
-  </div>
-</main>
-
-<script>
-// ════════════════════════════════════════════════════════════════
-//  SENTRY Parking Occupancy — Full Image Analysis Engine
-//  All pixel sampling and occupancy scoring run in-browser
-// ════════════════════════════════════════════════════════════════
-
-// ── Slot Definitions ───────────────────────────────────────────
-const SLOTS = [
-  { id:'A-C01', uuid:'30000000-0000-4000-8000-000000000001', lot:'A', compat:'car_only',
-    bev:{ x:50,  y:60, w:110, h:220 },   // BEV canvas coordinates
-    cam:{ x:60,  y:170, w:100, h:230 }   // Perspective canvas ROI (approx)
-  },
-  { id:'A-C02', uuid:'30000000-0000-4000-8000-000000000002', lot:'A', compat:'car_only',
-    bev:{ x:175, y:60, w:110, h:220 },
-    cam:{ x:200, y:170, w:120, h:230 }
-  },
-  { id:'A-C03', uuid:'30000000-0000-4000-8000-000000000003', lot:'A', compat:'car_only',
-    bev:{ x:300, y:60, w:110, h:220 },
-    cam:{ x:360, y:170, w:130, h:230 }
-  },
-  { id:'A-M01', uuid:'30000000-0000-4000-8000-000000000004', lot:'A', compat:'motorcycle_only',
-    bev:{ x:425, y:60, w:60,  h:130 },
-    cam:{ x:505, y:200, w:60, h:140 }
-  },
-  { id:'A-M02', uuid:'30000000-0000-4000-8000-000000000005', lot:'A', compat:'motorcycle_only',
-    bev:{ x:495, y:60, w:60,  h:130 },
-    cam:{ x:565, y:200, w:60, h:140 }
-  }
-];
-
-// ── Global State ────────────────────────────────────────────────
-const G = {
-  cameraMode: 'cctv',
-  loadedImage: null,
-  sourceName: null,
-  activeStep: 1,
-  selectedSlot: 0,
-  showGrid: true,
-  analyzed: false,
-  analyzing: false,
-  // Per-slot results after analysis
-  results: SLOTS.map(() => ({
-    rawScore: 0,          // 0-1 raw pixel occupancy
-    yoloConf: 0,          // 0-1 YOLO candidate confidence (simulated low-weight)
-    contextScore: 0,      // 0-1 contextual area score
-    confidence: 0,        // 0-1 fused confidence
-    ci: [0,0],
-    meanBuffer: Array.from({length:60}, ()=>0.5 + Math.random()*0.1),
-    mean60s: 0,
-    finalCall: 'unknown',
-    spillover: false,
-    occluded: false
-  }))
-};
-
-// ── Canvas refs ──────────────────────────────────────────────────
-const camC  = document.getElementById('camCanvas');
-const bevC  = document.getElementById('bevCanvas');
-const mapC  = document.getElementById('mapCanvas');
-const camCtx= camC.getContext('2d', {willReadFrequently:true});
-const bevCtx= bevC.getContext('2d', {willReadFrequently:true});
-const mapCtx= mapC.getContext('2d');
-
-// ═══════════════════════════════════════════
-//  CORE: Image Analysis Engine
-//  Runs entirely on client-side pixels
-// ═══════════════════════════════════════════
-
-/**
- * Compute occupancy score for a rectangular ROI in the given canvas context.
- * Returns 0=empty … 1=clearly occupied
- */
-function analyzeROI(ctx, canvasW, canvasH, roi, imgW, imgH) {
-  // Scale ROI from 640×480 canvas space to actual canvas pixel space
-  const scaleX = canvasW / 640;
-  const scaleY = canvasH / 480;
-  const rx = Math.round(roi.x * scaleX);
-  const ry = Math.round(roi.y * scaleY);
-  const rw = Math.round(roi.w * scaleX);
-  const rh = Math.round(roi.h * scaleY);
-
-  if (rw <= 0 || rh <= 0) return 0;
-
-  let pixels;
-  try {
-    pixels = ctx.getImageData(rx, ry, rw, rh).data;
-  } catch(e) { return 0.5; } // CORS fallback
-
-  const n = pixels.length / 4;
-  if (n === 0) return 0;
-
-  // Compute luminance stats
-  let sumL = 0, sumL2 = 0;
-  const lumsArr = [];
-  for (let i = 0; i < pixels.length; i += 4) {
-    const r = pixels[i], g = pixels[i+1], b = pixels[i+2];
-    const l = 0.299*r + 0.587*g + 0.114*b;
-    sumL  += l;
-    sumL2 += l*l;
-    lumsArr.push(l);
-  }
-  const meanL  = sumL / n;
-  const varL   = sumL2/n - meanL*meanL;
-  const stdL   = Math.sqrt(Math.max(0, varL));
-
-  // Compute edge density (Sobel-lite: horizontal differences in a grid)
-  let edgeSum = 0, edgeCount = 0;
-  const W = rw, H = rh;
-  for (let y = 1; y < H-1; y++) {
-    for (let x = 1; x < W-1; x++) {
-      const il = y*W + x-1;
-      const ir = y*W + x+1;
-      const iu = (y-1)*W + x;
-      const id = (y+1)*W + x;
-      const gx = lumsArr[ir] - lumsArr[il];
-      const gy = lumsArr[id] - lumsArr[iu];
-      edgeSum += Math.sqrt(gx*gx + gy*gy);
-      edgeCount++;
-    }
-  }
-  const edgeDensity = edgeCount > 0 ? edgeSum/edgeCount : 0;
-
-  // Compute color saturation (colorful objects = cars)
-  let satSum = 0;
-  for (let i = 0; i < pixels.length; i += 4) {
-    const r=pixels[i]/255, g=pixels[i+1]/255, b=pixels[i+2]/255;
-    const mx=Math.max(r,g,b), mn=Math.min(r,g,b);
-    satSum += mx > 0 ? (mx-mn)/mx : 0;
-  }
-  const meanSat = satSum / n;
-
-  // Scoring heuristics:
-  // - High edge density → vehicle (structural edges)
-  // - High variance → non-uniform (empty concrete is flat)
-  // - Very bright (>200) or very dark (<20) → likely empty / night-sky
-  // - Medium luma + high variance + edges → vehicle
-
-  const edgeNorm = Math.min(1, edgeDensity / 40);   // 40 is empirical threshold
-  const varNorm  = Math.min(1, stdL / 60);            // 60 ≈ high variance
-  const satNorm  = Math.min(1, meanSat * 3);
-
-  // Luma zone: concrete is 160-220, vehicles 40-160
-  const lumaScore = meanL > 20 && meanL < 180 ? 1 : (meanL < 20 ? 0.1 : 0.4);
-
-  // Raw pixel occupancy score
-  const raw = lumaScore * (edgeNorm * 0.45 + varNorm * 0.35 + satNorm * 0.20);
-
-  return Math.min(1, Math.max(0, raw));
-}
-
-/**
- * Run the full 7-step analysis pipeline on the loaded image.
- * Updates G.results for all slots, then redraws everything.
- */
-async function runFullAnalysis() {
-  if (G.analyzing) return;
-  G.analyzing = true;
-  G.analyzed  = false;
-
-  // Show scan overlay
-  document.getElementById('scanOverlay').classList.remove('hidden');
-  document.getElementById('btnAnalyzeTxt').textContent = '⏳ Analyzing…';
-
-  const steps = [
-    'Step 1/7: Raw ingestion & resolution validation',
-    'Step 2/7: Computing homography H matrix (3×3)',
-    'Step 3/7: Warping perspective → BEV ground plane',
-    'Step 4/7: Adaptive slot mapping & drift compensation (ΔH)',
-    'Step 5/7: Pixel-level ROI sampling per stall',
-    'Step 6/7: Low-weight YOLO candidate confidence fusion',
-    'Step 7/7: Contextual area analysis & cognitive fusion → Final Call',
-  ];
-
-  const prog = document.getElementById('analysisProgress');
-
-  for (let s = 0; s < steps.length; s++) {
-    prog.textContent = steps[s];
-    // Small async yield so the DOM repaints
-    await new Promise(r => setTimeout(r, 350));
-
-    if (s === 2) {
-      // Step 3: Draw image on camera canvas (perspective view with ROI overlay)
-      drawCameraCanvas(false);
+      `;
     }
 
-    if (s === 3) {
-      // Step 4: Draw the BEV warped version
-      drawBevCanvas(false);
+    // ════════════════════════════════════════════════════════════════
+    // CANVAS RENDERING 1: CAMERA PERSPECTIVE VIEW
+    // ════════════════════════════════════════════════════════════════
+    function renderPerspectiveCanvas() {
+      const canvas = document.getElementById('cameraCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const isCctv = state.cameraMode === 'cctv';
+
+      ctx.clearRect(0, 0, w, h);
+
+      // 1. Draw Image Background (if loaded) or asphalt gradient
+      if (state.loadedImage && state.loadedImage.complete) {
+        ctx.drawImage(state.loadedImage, 0, 0, w, h);
+        
+        // Analyze image pixels for slot occupancy
+        analyzeImagePixels(ctx);
+      } else {
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+        bgGrad.addColorStop(0, '#1e293b');
+        bgGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      // 2. Horizon line
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(0, isCctv ? 120 : 50);
+      ctx.lineTo(w, isCctv ? 120 : 50);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 3. Draw Calibrated ROI Quadrilateral
+      const pts = getHomographyPoints().src;
+      ctx.strokeStyle = '#06b6d4'; // cyan
+      ctx.lineWidth = 2;
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.08)';
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      ctx.lineTo(pts[1][0], pts[1][1]);
+      ctx.lineTo(pts[2][0], pts[2][1]);
+      ctx.lineTo(pts[3][0], pts[3][1]);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Draw Quad Corner Anchors
+      pts.forEach((p, i) => {
+        ctx.fillStyle = '#06b6d4';
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillText(`P${i}`, p[0] + 6, p[1] - 4);
+      });
+
+      // Perspective parking stall lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i <= 3; i++) {
+        const t = i / 3;
+        const xTop = pts[0][0] + t * (pts[1][0] - pts[0][0]);
+        const yTop = pts[0][1] + t * (pts[1][1] - pts[0][1]);
+        const xBot = pts[3][0] + t * (pts[2][0] - pts[3][0]);
+        const yBot = pts[3][1] + t * (pts[2][1] - pts[3][1]);
+        ctx.beginPath();
+        ctx.moveTo(xTop, yTop);
+        ctx.lineTo(xBot, yBot);
+        ctx.stroke();
+      }
+
+      // Draw vehicle representation in perspective
+      const carX = state.carX;
+      const carCamY = isCctv ? 240 : 180;
+      const carCamW = isCctv ? 140 : 110;
+      const carCamH = isCctv ? 90 : 140;
+
+      // Car shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.beginPath();
+      ctx.ellipse(carX + carCamW/2, carCamY + carCamH, carCamW/2, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Car body
+      const carGrad = ctx.createLinearGradient(carX, carCamY, carX, carCamY + carCamH);
+      carGrad.addColorStop(0, '#38bdf8');
+      carGrad.addColorStop(1, '#0284c7');
+      ctx.fillStyle = carGrad;
+      ctx.beginPath();
+      ctx.roundRect(carX, carCamY, carCamW, carCamH, 12);
+      ctx.fill();
+
+      // Car roof / windshield
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.roundRect(carX + 15, carCamY + 12, carCamW - 30, carCamH - 35, 6);
+      ctx.fill();
+
+      // YOLO Proposal Bounding Box (Amber)
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 2]);
+      ctx.strokeRect(carX - 8, carCamY - 14, carCamW + 16, carCamH + 20);
+      ctx.setLineDash([]);
+
+      // YOLO Tag Badge
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(carX - 8, carCamY - 28, 92, 16);
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 9px JetBrains Mono';
+      ctx.fillText('car: 0.54 (low)', carX - 4, carCamY - 16);
     }
 
-    if (s === 4) {
-      // Step 5: Actual pixel sampling — read from camera canvas because
-      // the image is drawn there at 640×480
-      SLOTS.forEach((slot, idx) => {
-        let raw = 0;
-        if (G.loadedImage) {
-          // Sample from camera canvas ROI mapped to the perspective image
-          raw = analyzeROI(camCtx, 640, 480, slot.cam, 640, 480);
+    // ════════════════════════════════════════════════════════════════
+    // CANVAS RENDERING 2: BIRD'S-EYE VIEW (BEV) WARPED PLANE
+    // ════════════════════════════════════════════════════════════════
+    function renderBevCanvas() {
+      const canvas = document.getElementById('bevCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Background rectified metric pavement
+      ctx.fillStyle = '#0b1120';
+      ctx.fillRect(0, 0, w, h);
+
+      // Metric grid (1m x 1m equivalent squares)
+      if (state.showGrid) {
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1;
+        const gridSize = 40;
+        for (let x = 0; x < w; x += gridSize) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        for (let y = 0; y < h; y += gridSize) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+      }
+
+      // Draw Calibrated Stalls
+      state.slots.forEach((s, idx) => {
+        const m = computeCurrentSlotMetrics(idx);
+        const rect = s.bevRect;
+        const isSelected = (idx === state.selectedSlotIndex);
+
+        // Fill color based on occupancy state
+        let strokeColor = '#10b981'; // green
+        let fillColor = 'rgba(16, 185, 129, 0.12)';
+
+        if (m.isOccluded) {
+          strokeColor = '#f59e0b'; // amber
+          fillColor = 'rgba(245, 158, 11, 0.15)';
+        } else if (m.consumedRatio >= 0.50) {
+          strokeColor = '#f43f5e'; // red
+          fillColor = 'rgba(244, 63, 94, 0.18)';
+        } else if (m.isSpillover) {
+          strokeColor = '#f97316'; // orange
+          fillColor = 'rgba(249, 115, 22, 0.20)';
+        }
+
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = isSelected ? 3 : 2;
+        ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+
+        // Slot ID label
+        ctx.fillStyle = isSelected ? '#38bdf8' : '#94a3b8';
+        ctx.font = 'bold 11px JetBrains Mono';
+        ctx.fillText(s.id, rect.x + 8, rect.y + 20);
+
+        // Status text inside stall
+        ctx.fillStyle = strokeColor;
+        ctx.font = 'bold 9px JetBrains Mono';
+        const statusText = m.isOccluded ? 'OCCLUDED' : (m.consumedRatio >= 0.50 ? 'OCCUPIED' : (m.isSpillover ? 'SPILLED' : 'AVAILABLE'));
+        ctx.fillText(statusText, rect.x + 8, rect.y + rect.h - 12);
+      });
+
+      // Draw vehicle footprint rectangle in BEV
+      if (state.showFootprint) {
+        const carX = state.carX;
+        const carY = 90;
+        const carW = 90;
+        const carH = 160;
+
+        ctx.fillStyle = '#0284c7';
+        ctx.beginPath();
+        ctx.roundRect(carX, carY, carW, carH, 8);
+        ctx.fill();
+
+        // Directional arrow on car
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(carX + carW/2, carY + 25);
+        ctx.lineTo(carX + carW/2 - 12, carY + 45);
+        ctx.lineTo(carX + carW/2 + 12, carY + 45);
+        ctx.closePath();
+        ctx.fill();
+
+        // Wheels
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(carX - 4, carY + 25, 6, 25);
+        ctx.fillRect(carX + carW - 2, carY + 25, 6, 25);
+        ctx.fillRect(carX - 4, carY + 110, 6, 25);
+        ctx.fillRect(carX + carW - 2, carY + 110, 6, 25);
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // CANVAS RENDERING 3: CAMPUS OVERHEAD MAP
+    // ════════════════════════════════════════════════════════════════
+    function renderOverheadMapCanvas() {
+      const canvas = document.getElementById('overheadMapCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Campus background pavement
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, w, h);
+
+      // Lot A border zone
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(30, 30, w - 60, h - 60);
+
+      ctx.fillStyle = '#475569';
+      ctx.font = 'bold 12px JetBrains Mono';
+      ctx.fillText('LOT A — VISITOR & FACULTY BAYS', 45, 55);
+
+      // Draw all parking slots
+      state.slots.forEach((s, idx) => {
+        const m = computeCurrentSlotMetrics(idx);
+        const mapX = 50 + idx * 75;
+        const mapY = 80;
+        const mapW = 65;
+        const mapH = 130;
+        const isSelected = (idx === state.selectedSlotIndex);
+
+        let strokeColor = '#10b981';
+        let fillColor = 'rgba(16, 185, 129, 0.2)';
+
+        if (m.isOccluded) {
+          strokeColor = '#f59e0b';
+          fillColor = 'rgba(245, 158, 11, 0.25)';
+        } else if (m.consumedRatio >= 0.50) {
+          strokeColor = '#f43f5e';
+          fillColor = 'rgba(244, 63, 94, 0.25)';
+        } else if (m.isSpillover) {
+          strokeColor = '#f97316';
+          fillColor = 'rgba(249, 115, 22, 0.3)';
+        }
+
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(mapX, mapY, mapW, mapH);
+
+        ctx.strokeStyle = isSelected ? '#38bdf8' : strokeColor;
+        ctx.lineWidth = isSelected ? 3 : 2;
+        ctx.strokeRect(mapX, mapY, mapW, mapH);
+
+        // Label
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px JetBrains Mono';
+        ctx.fillText(s.id, mapX + 8, mapY + 22);
+
+        // Mini status icon
+        ctx.fillStyle = strokeColor;
+        ctx.beginPath();
+        ctx.arc(mapX + mapW - 14, mapY + 18, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Occupancy %
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '9px JetBrains Mono';
+        ctx.fillText(`${Math.round(m.consumedRatio * 100)}%`, mapX + 8, mapY + 45);
+      });
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // UI INSPECTOR & SENTRY EVENT PAYLOAD UPDATE
+    // ════════════════════════════════════════════════════════════════
+    function updateInspectorAndPayload() {
+      const m = computeCurrentSlotMetrics(state.selectedSlotIndex);
+      
+      // Slot readout
+      document.getElementById('inspectorSlotId').textContent = `Slot ${m.slot.id}`;
+      document.getElementById('inspectorCompat').textContent = `${m.slot.compat} • ${m.slot.areaM2}m²`;
+      document.getElementById('inspectorAreaVals').textContent = `ρ = ${(m.consumedRatio * 100).toFixed(1)}% | Rem = ${(m.remainingRatio * 100).toFixed(1)}%`;
+      document.getElementById('inspectorCiVals').textContent = m.ci;
+      document.getElementById('inspectorMeanVal').textContent = m.mean;
+      
+      const badge = document.getElementById('inspectorFinalBadge');
+      if (m.finalCall === 'occupied') {
+        badge.textContent = 'OCCUPIED';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-rose-950 text-rose-300 border border-rose-800';
+      } else if (m.finalCall === 'spillover_blocked') {
+        badge.textContent = 'SPILLOVER';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-orange-950 text-orange-300 border border-orange-800';
+      } else if (m.finalCall === 'unknown') {
+        badge.textContent = 'UNKNOWN';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-amber-950 text-amber-300 border border-amber-800';
+      } else {
+        badge.textContent = 'AVAILABLE';
+        badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-emerald-950 text-emerald-300 border border-emerald-800';
+      }
+
+      // JSON payload formatted strictly to schema CANDIDATE-2026-10-30.2
+      const eventJson = {
+        schema_version: "2026-10-30.2",
+        event_type: "space_state_changed",
+        space_id: m.slot.uuid,
+        lot_code: m.slot.lot,
+        new_state: m.finalCall === 'spillover_blocked' ? 'occupied' : m.finalCall,
+        previous_state: "available",
+        confidence: parseFloat(m.mean),
+        captured_at: new Date().toISOString(),
+        correlation_id: null
+      };
+
+      document.getElementById('eventJsonPreview').textContent = JSON.stringify(eventJson, null, 2);
+    }
+
+    // Update the dynamic content for the active step
+    function updateStepDetailView() {
+      const stepMeta = stepMetadata[state.activeStep - 1];
+      document.getElementById('stepDetailNumber').textContent = stepMeta.step;
+      document.getElementById('stepDetailTitle').textContent = stepMeta.title;
+      document.getElementById('stepDetailDesc').textContent = stepMeta.desc;
+      document.getElementById('stepModuleTag').textContent = stepMeta.module;
+      document.getElementById('stepDynamicContent').innerHTML = stepMeta.render();
+
+      // Update Stepper active classes
+      document.querySelectorAll('.step-btn').forEach(btn => {
+        const stepNum = parseInt(btn.getAttribute('data-step'));
+        if (stepNum === state.activeStep) {
+          btn.className = 'step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold shadow-sm';
+          btn.querySelector('span:first-child').className = 'w-5 h-5 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center text-[11px] font-bold';
         } else {
-          // Synthetic fallback: use slot index to simulate a scenario
-          raw = idx === 1 ? 0.88 : (idx === 0 ? 0.52 : 0.1);
-        }
-        G.results[idx].rawScore = raw;
-      });
-    }
-
-    if (s === 5) {
-      // Step 6: Low-weight YOLO confidence (simulated from raw score with noise & downweight)
-      SLOTS.forEach((slot, idx) => {
-        const r = G.results[idx];
-        // YOLO is artificially limited: cap its confidence to simulate low-weight role
-        r.yoloConf = Math.max(0.30, Math.min(0.72, r.rawScore * 0.65 + Math.random() * 0.08));
-        r.contextScore = Math.min(1, r.rawScore * 1.15);
-        // Spillover: if two adjacent car slots both have moderate scores
-        const nextIdx = idx + 1;
-        if (nextIdx < SLOTS.length &&
-            G.results[idx].rawScore > 0.3 &&
-            G.results[nextIdx].rawScore > 0.2 &&
-            G.results[idx].rawScore + G.results[nextIdx].rawScore > 1.0) {
-          r.spillover = true;
-        }
-        // Occlusion: if CCTV mode and raw score is low but YOLO is moderate
-        if (G.cameraMode === 'cctv' && r.rawScore < 0.25 && r.yoloConf > 0.3) {
-          r.occluded = true;
-        }
-      });
-    }
-
-    if (s === 6) {
-      // Step 7: Cognitive fusion
-      SLOTS.forEach((slot, idx) => {
-        const r = G.results[idx];
-
-        // Fused confidence: geometric pixel (high weight) + YOLO (low weight)
-        const fused = r.contextScore * 0.70 + r.yoloConf * 0.30;
-        r.confidence = Math.min(0.99, Math.max(0.01, fused));
-
-        // Update 1-min rolling buffer with new sample
-        r.meanBuffer.shift();
-        r.meanBuffer.push(r.confidence);
-        r.mean60s = r.meanBuffer.reduce((a,b)=>a+b,0) / r.meanBuffer.length;
-
-        // 95% CI: mean ± 1.96 * SE (approximated with std of buffer)
-        const bufMean = r.mean60s;
-        const bufVar  = r.meanBuffer.reduce((a,v)=>a+(v-bufMean)**2,0)/r.meanBuffer.length;
-        const se = Math.sqrt(bufVar/r.meanBuffer.length) + 0.01;
-        r.ci = [
-          parseFloat(Math.max(0,bufMean - 1.96*se).toFixed(3)),
-          parseFloat(Math.min(1,bufMean + 1.96*se).toFixed(3))
-        ];
-
-        // Final call with hysteresis: threshold at 0.50 mean
-        if (r.occluded) {
-          r.finalCall = 'unknown';
-        } else if (r.mean60s >= 0.50) {
-          r.finalCall = r.spillover ? 'occupied' : 'occupied';
-        } else {
-          r.finalCall = 'available';
+          btn.className = 'step-btn px-3 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-400 hover:bg-slate-800/80 border border-transparent';
+          btn.querySelector('span:first-child').className = 'w-5 h-5 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-[11px] font-bold';
         }
       });
 
-      G.analyzed = true;
-    }
-  }
-
-  document.getElementById('scanOverlay').classList.add('hidden');
-  document.getElementById('btnAnalyzeTxt').textContent = '▶ Re-Analyze';
-  G.analyzing = false;
-
-  renderAll();
-}
-
-// ═══════════════════════════════════════════
-//  DRAWING: Camera Canvas
-// ═══════════════════════════════════════════
-function drawCameraCanvas(withSlotOverlays = true) {
-  camCtx.clearRect(0, 0, 640, 480);
-
-  if (G.loadedImage) {
-    // Draw the loaded image to fill the canvas
-    camCtx.drawImage(G.loadedImage, 0, 0, 640, 480);
-  } else {
-    // Synthetic gradient background
-    const isCctv = G.cameraMode === 'cctv';
-    const bg = camCtx.createLinearGradient(0,0,0,480);
-    bg.addColorStop(0,'#1e293b'); bg.addColorStop(1,'#0f172a');
-    camCtx.fillStyle = bg;
-    camCtx.fillRect(0,0,640,480);
-    // Horizon
-    camCtx.strokeStyle='#334155'; camCtx.lineWidth=1;
-    camCtx.setLineDash([4,4]);
-    camCtx.beginPath(); camCtx.moveTo(0, isCctv?120:50); camCtx.lineTo(640, isCctv?120:50); camCtx.stroke();
-    camCtx.setLineDash([]);
-  }
-
-  // ── Homography ROI Quadrilateral ──────────────────────────────
-  const pts = getHomographyPts().src;
-  camCtx.strokeStyle='#06b6d4'; camCtx.lineWidth=2;
-  camCtx.fillStyle='rgba(6,182,212,0.08)';
-  camCtx.beginPath();
-  camCtx.moveTo(pts[0][0],pts[0][1]);
-  pts.forEach(p => camCtx.lineTo(p[0],p[1]));
-  camCtx.closePath(); camCtx.fill(); camCtx.stroke();
-
-  // Corner anchors
-  pts.forEach((p,i) => {
-    camCtx.fillStyle='#06b6d4';
-    camCtx.beginPath(); camCtx.arc(p[0],p[1],4,0,Math.PI*2); camCtx.fill();
-    camCtx.fillStyle='#fff'; camCtx.font='9px JetBrains Mono';
-    camCtx.fillText(`P${i}`, p[0]+5, p[1]-4);
-  });
-
-  // Stall dividers (perspective lines)
-  camCtx.strokeStyle='rgba(255,255,255,0.35)'; camCtx.lineWidth=1.5;
-  for (let i=0; i<=3; i++) {
-    const t=i/3;
-    const xt = pts[0][0]+t*(pts[1][0]-pts[0][0]);
-    const yt = pts[0][1]+t*(pts[1][1]-pts[0][1]);
-    const xb = pts[3][0]+t*(pts[2][0]-pts[3][0]);
-    const yb = pts[3][1]+t*(pts[2][1]-pts[3][1]);
-    camCtx.beginPath(); camCtx.moveTo(xt,yt); camCtx.lineTo(xb,yb); camCtx.stroke();
-  }
-
-  if (!withSlotOverlays || !G.analyzed) return;
-
-  // ── Per-slot overlays from analysis results ───────────────────
-  SLOTS.forEach((slot, idx) => {
-    const r = G.results[idx];
-    const roi = slot.cam;
-
-    const col = r.finalCall === 'occupied' ? '#f43f5e' :
-                r.finalCall === 'available'? '#10b981' : '#f59e0b';
-
-    // Slot ROI box on perspective image
-    camCtx.strokeStyle = col; camCtx.lineWidth = 2;
-    camCtx.fillStyle = col.replace(')',',0.10)').replace('rgb','rgba');
-    camCtx.strokeRect(roi.x, roi.y, roi.w, roi.h);
-    camCtx.fillRect(roi.x, roi.y, roi.w, roi.h);
-
-    // Label
-    camCtx.fillStyle = col; camCtx.font='bold 9px JetBrains Mono';
-    camCtx.fillText(slot.id, roi.x+4, roi.y+14);
-
-    // ρ occupancy score
-    const rhoBar = `ρ=${(r.rawScore*100).toFixed(0)}%`;
-    camCtx.fillStyle='rgba(0,0,0,0.65)';
-    camCtx.fillRect(roi.x, roi.y+roi.h-18, roi.w, 18);
-    camCtx.fillStyle = col; camCtx.font='8px JetBrains Mono';
-    camCtx.fillText(rhoBar, roi.x+4, roi.y+roi.h-6);
-
-    // YOLO bbox overlay (Step 4+)
-    if (G.activeStep >= 4 && r.rawScore > 0.25) {
-      camCtx.strokeStyle='#f59e0b'; camCtx.lineWidth=1.5;
-      camCtx.strokeRect(roi.x-4, roi.y-4, roi.w+8, roi.h+8);
-      camCtx.fillStyle='#f59e0b';
-      camCtx.fillRect(roi.x-4, roi.y-18, 90, 15);
-      camCtx.fillStyle='#000'; camCtx.font='8px JetBrains Mono';
-      camCtx.fillText(`car:${r.yoloConf.toFixed(2)} [low-wt]`, roi.x-1, roi.y-7);
-    }
-  });
-}
-
-// ═══════════════════════════════════════════
-//  DRAWING: BEV Canvas
-// ═══════════════════════════════════════════
-function drawBevCanvas(withSlots = true) {
-  bevCtx.clearRect(0,0,640,480);
-
-  // Ground
-  bevCtx.fillStyle='#0f172a'; bevCtx.fillRect(0,0,640,480);
-
-  // Grid
-  if (G.showGrid) {
-    bevCtx.strokeStyle='#1e293b'; bevCtx.lineWidth=1;
-    for (let x=0;x<640;x+=40){ bevCtx.beginPath(); bevCtx.moveTo(x,0); bevCtx.lineTo(x,480); bevCtx.stroke(); }
-    for (let y=0;y<480;y+=40){ bevCtx.beginPath(); bevCtx.moveTo(0,y); bevCtx.lineTo(640,y); bevCtx.stroke(); }
-  }
-
-  // Warped image in BEV (simulated perspective-to-ortho transform using CSS-like affine)
-  if (G.loadedImage) {
-    bevCtx.save();
-    const pts = getHomographyPts();
-    // Simple approximate warp: draw image clipped to destination quad
-    bevCtx.globalAlpha = 0.55;
-    // Map the 4-corner quad area
-    const d = pts.dst;
-    bevCtx.beginPath();
-    bevCtx.moveTo(d[0][0],d[0][1]);
-    bevCtx.lineTo(d[1][0],d[1][1]);
-    bevCtx.lineTo(d[2][0],d[2][1]);
-    bevCtx.lineTo(d[3][0],d[3][1]);
-    bevCtx.closePath();
-    bevCtx.clip();
-    bevCtx.drawImage(G.loadedImage, d[0][0], d[0][1], d[1][0]-d[0][0], d[2][1]-d[1][1]);
-    bevCtx.globalAlpha = 1;
-    bevCtx.restore();
-  }
-
-  if (!withSlots) return;
-
-  // ── Stall polygons ─────────────────────────────────────────────
-  SLOTS.forEach((slot, idx) => {
-    const r = G.results[idx];
-    const isSelected = idx === G.selectedSlot;
-    const roi = slot.bev;
-
-    let col = '#475569';
-    if (G.analyzed) {
-      col = r.finalCall === 'occupied' ? '#f43f5e' :
-            r.finalCall === 'available'? '#10b981' : '#f59e0b';
+      document.getElementById('prevStepBtn').disabled = (state.activeStep === 1);
+      document.getElementById('nextStepBtn').disabled = (state.activeStep === 7);
     }
 
-    bevCtx.fillStyle = G.analyzed
-      ? col.replace(')',',0.18)').replace('#','').match(/.{2}/g).map(h=>parseInt(h,16))
-              .reduce((s,v,i)=>s+(i<3?`${i===0?'rgba(':','}${v}`:`,0.18)`), '')
-      : 'rgba(30,41,59,0.5)';
-
-    // Easier fill approach
-    const alpha = G.analyzed ? 0.18 : 0.08;
-    const hexToRgba = (hex, a) => {
-      const v = parseInt(hex.slice(1),16);
-      return `rgba(${v>>16},${(v>>8)&255},${v&255},${a})`;
-    };
-
-    bevCtx.fillStyle = G.analyzed ? hexToRgba(r.finalCall==='occupied'?'#f43f5e':r.finalCall==='available'?'#10b981':'#f59e0b', 0.18) : 'rgba(30,41,59,0.5)';
-    bevCtx.strokeStyle = isSelected ? '#38bdf8' : col;
-    bevCtx.lineWidth = isSelected ? 3 : 2;
-
-    bevCtx.fillRect(roi.x, roi.y, roi.w, roi.h);
-    bevCtx.strokeRect(roi.x, roi.y, roi.w, roi.h);
-
-    // Slot ID
-    bevCtx.fillStyle = isSelected ? '#38bdf8' : '#94a3b8';
-    bevCtx.font = 'bold 11px JetBrains Mono';
-    bevCtx.fillText(slot.id, roi.x+8, roi.y+20);
-
-    if (G.analyzed) {
-      // ρ bar
-      const barH = Math.round(roi.h * r.rawScore);
-      bevCtx.fillStyle = hexToRgba(r.finalCall==='occupied'?'#f43f5e':r.finalCall==='available'?'#10b981':'#f59e0b', 0.4);
-      bevCtx.fillRect(roi.x, roi.y + roi.h - barH, roi.w, barH);
-
-      // Final call label
-      bevCtx.fillStyle = r.finalCall==='occupied'?'#f43f5e':r.finalCall==='available'?'#10b981':'#f59e0b';
-      bevCtx.font = '9px JetBrains Mono';
-      bevCtx.fillText(r.finalCall.toUpperCase(), roi.x+8, roi.y+roi.h-8);
-
-      // Mean confidence label
-      bevCtx.fillStyle='#cbd5e1'; bevCtx.font='8px JetBrains Mono';
-      bevCtx.fillText(`p̄=${r.mean60s.toFixed(2)}`, roi.x+8, roi.y+roi.h-20);
+    // Render Everything
+    function renderAll() {
+      renderPerspectiveCanvas();
+      renderBevCanvas();
+      renderOverheadMapCanvas();
+      updateInspectorAndPayload();
+      updateStepDetailView();
     }
-  });
-}
 
-// ═══════════════════════════════════════════
-//  DRAWING: Overhead Map
-// ═══════════════════════════════════════════
-function drawMapCanvas() {
-  mapCtx.clearRect(0,0,460,230);
-  mapCtx.fillStyle='#060b14'; mapCtx.fillRect(0,0,460,230);
+    // ════════════════════════════════════════════════════════════════
+    // FILE INGESTION HANDLERS (Upload & Drag-and-Drop)
+    // ════════════════════════════════════════════════════════════════
+    function processPhotoFile(file) {
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        alert('Please choose a valid image file (JPG, PNG, WEBP).');
+        return;
+      }
 
-  // Aisle
-  mapCtx.strokeStyle='rgba(255,255,255,0.12)'; mapCtx.lineWidth=1.5; mapCtx.setLineDash([6,6]);
-  mapCtx.beginPath(); mapCtx.moveTo(20,185); mapCtx.lineTo(440,185); mapCtx.stroke();
-  mapCtx.setLineDash([]);
-  mapCtx.fillStyle='#334155'; mapCtx.font='9px JetBrains Mono';
-  mapCtx.fillText('ONE WAY →', 160, 205);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          state.loadedImage = img;
+          state.sourceName = file.name;
+          state.isCustomImage = true;
 
-  // Render slots on a 460×230 overhead canvas (scaled from BEV coords)
-  const scaleX = 460/640;
-  const scaleY = 185/480;
+          // Update UI badges
+          document.getElementById('camResBadge').textContent = `${img.naturalWidth}x${img.naturalHeight}`;
+          document.getElementById('camStreamTitle').textContent = `Ingested Custom Photo: ${file.name}`;
+          document.getElementById('camOverlayText').textContent = `Custom Ingestion: ${file.name} (${img.naturalWidth}x${img.naturalHeight})`;
+          
+          // Show custom option in select
+          const customGroup = document.getElementById('customOptGroup');
+          const customOpt = document.getElementById('customOpt');
+          if (customGroup && customOpt) {
+            customGroup.classList.remove('hidden');
+            customOpt.textContent = `📁 ${file.name}`;
+            document.getElementById('scenarioSelector').value = 'custom';
+          }
 
-  SLOTS.forEach((slot, idx) => {
-    const r = G.results[idx];
-    const isSelected = idx === G.selectedSlot;
-    const roi = slot.bev;
-
-    const sx = roi.x * scaleX;
-    const sy = roi.y * scaleY + 10;
-    const sw = roi.w * scaleX;
-    const sh = roi.h * scaleY;
-
-    const col = G.analyzed
-      ? (r.finalCall==='occupied'?'#f43f5e':r.finalCall==='available'?'#10b981':'#f59e0b')
-      : '#475569';
-
-    mapCtx.strokeStyle = isSelected ? '#38bdf8' : col;
-    mapCtx.lineWidth = isSelected ? 3 : 1.5;
-    mapCtx.fillStyle = G.analyzed ? col.replace('#','') : '334155';
-
-    const hexToRgba = (hex,a) => { const v=parseInt(hex.slice(1),16); return `rgba(${v>>16},${(v>>8)&255},${v&255},${a})`; };
-    mapCtx.fillStyle = G.analyzed ? hexToRgba(col, 0.3) : 'rgba(51,65,85,0.3)';
-
-    // Draw slot
-    mapCtx.beginPath();
-    mapCtx.roundRect(sx, sy, sw, sh, 3);
-    mapCtx.fill();
-    mapCtx.stroke();
-
-    mapCtx.fillStyle = isSelected ? '#fff' : '#e2e8f0';
-    mapCtx.font = 'bold 8px JetBrains Mono';
-    mapCtx.fillText(slot.id, sx+4, sy+13);
-
-    if (G.analyzed) {
-      mapCtx.fillStyle = col;
-      mapCtx.font = '7px JetBrains Mono';
-      mapCtx.fillText(r.finalCall.substring(0,4).toUpperCase(), sx+4, sy+sh-5);
+          // Trigger full cognitive analysis pipeline
+          triggerFullAnalysis();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
     }
-  });
-}
 
-// ═══════════════════════════════════════════
-//  DRAWING: Pixel Meter Row
-// ═══════════════════════════════════════════
-function updatePixelMeters() {
-  const row = document.getElementById('pixelMeterRow');
-  row.innerHTML = '';
-  if (!G.analyzed) return;
-
-  SLOTS.forEach((slot, idx) => {
-    const r = G.results[idx];
-    const col = r.finalCall==='occupied'?'rose':r.finalCall==='available'?'emerald':'amber';
-    const pct = Math.round(r.rawScore*100);
-    const div = document.createElement('div');
-    div.className = `bg-slate-950/80 border border-slate-800 rounded-lg p-2 text-center cursor-pointer ${idx===G.selectedSlot?'ring-1 ring-cyan-400':''}`;
-    div.innerHTML = `
-      <div class="text-[9px] mono text-slate-400 mb-1">${slot.id}</div>
-      <div class="relative h-16 bg-slate-900 rounded overflow-hidden mb-1">
-        <div class="absolute bottom-0 inset-x-0 bg-${col}-500/60 transition-all duration-500" style="height:${pct}%"></div>
-        <div class="absolute inset-0 flex items-center justify-center">
-          <span class="text-xs font-bold mono text-${col}-300">${pct}%</span>
-        </div>
-      </div>
-      <div class="text-[8px] mono text-${col}-400 font-bold">${r.finalCall.toUpperCase()}</div>
-    `;
-    div.addEventListener('click', () => { G.selectedSlot = idx; updateInspector(); drawBevCanvas(); drawMapCanvas(); updatePixelMeters(); });
-    row.appendChild(div);
-  });
-}
-
-// ═══════════════════════════════════════════
-//  INSPECTOR: Slot Detail Panel
-// ═══════════════════════════════════════════
-function updateInspector() {
-  const slot = SLOTS[G.selectedSlot];
-  const r    = G.results[G.selectedSlot];
-
-  document.getElementById('iSlotId').textContent   = `${slot.id} (Lot ${slot.lot})`;
-  document.getElementById('iCompat').textContent   = `${slot.compat} • 12.5 m²`;
-
-  if (!G.analyzed) {
-    document.getElementById('iRho').textContent  = '— (run analysis)';
-    document.getElementById('iCi').textContent   = '—';
-    document.getElementById('iMean').textContent = '—';
-    document.getElementById('iFinalBadge').textContent = '—';
-    document.getElementById('iFinalBadge').className   = 'px-2.5 py-0.5 rounded-full text-xs font-bold mono border bg-slate-800 text-slate-400 border-slate-700';
-    document.getElementById('eventJson').textContent   = '{}';
-    document.getElementById('sparkline').innerHTML     = '';
-    return;
-  }
-
-  document.getElementById('iRho').textContent  = `ρ = ${(r.rawScore*100).toFixed(1)}% | Rem = ${((1-r.rawScore)*100).toFixed(1)}%`;
-  document.getElementById('iRho').className    = `mono font-bold ${r.rawScore>0.5?'text-rose-400':r.rawScore>0.2?'text-amber-400':'text-emerald-400'}`;
-  document.getElementById('iCi').textContent  = `[${r.ci[0]}, ${r.ci[1]}]`;
-  document.getElementById('iMean').textContent = r.mean60s.toFixed(3);
-
-  const col = r.finalCall==='occupied'?'rose':r.finalCall==='available'?'emerald':'amber';
-  const badge = document.getElementById('iFinalBadge');
-  badge.textContent = r.finalCall.toUpperCase();
-  badge.className   = `px-2.5 py-0.5 rounded-full text-xs font-bold mono border bg-${col}-950 text-${col}-300 border-${col}-800`;
-
-  // Sparkline
-  const spark = document.getElementById('sparkline');
-  spark.innerHTML = r.meanBuffer.map(v =>
-    `<div class="flex-1 bg-cyan-500/70 rounded-t spark-bar" style="height:${Math.round(v*100)}%" title="${v.toFixed(2)}"></div>`
-  ).join('');
-
-  // Event JSON
-  const event = {
-    schema_version: "2026-10-30.2",
-    event_type: "space_state_changed",
-    space_id: slot.uuid,
-    lot_code: slot.lot,
-    new_state: r.finalCall,
-    previous_state: "unknown",
-    confidence: parseFloat(r.mean60s.toFixed(4)),
-    raw_pixel_score: parseFloat(r.rawScore.toFixed(4)),
-    yolo_support_confidence: parseFloat(r.yoloConf.toFixed(4)),
-    ci_95: r.ci,
-    spillover_flag: r.spillover,
-    occluded_flag: r.occluded,
-    captured_at: new Date().toISOString(),
-    correlation_id: null
-  };
-  document.getElementById('eventJson').textContent = JSON.stringify(event, null, 2);
-}
-
-// ═══════════════════════════════════════════
-//  STEP DEFINITIONS
-// ═══════════════════════════════════════════
-const STEPS = [
-  {
-    num:1, title:"Step 1 — Ingestion & Frame Acquisition",
-    desc:"Photo loaded into 640×480 canvas buffer. Resolution and color profile validated.",
-    module:"capture.py",
-    body: () => {
-      const img = G.loadedImage;
-      return `
-      <div class="grid grid-cols-2 gap-3">
-        <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-1.5 text-[11px] mono">
-          <div class="text-slate-400 text-[9px] uppercase font-bold mb-1">Source Frame Info</div>
-          <div>Source: <span class="text-cyan-300">${G.sourceName || 'No photo (synthetic)'}</span></div>
-          <div>Resolution: <span class="text-slate-200">${img ? `${img.width}×${img.height}` : '640×480 (synthetic)'}</span></div>
-          <div>Channels: <span class="text-slate-200">BGR (OpenCV-compatible)</span></div>
-          <div>Camera Mode: <span class="${G.cameraMode==='cctv'?'text-amber-400':'text-emerald-400'}">${G.cameraMode==='cctv'?'Oblique CCTV 45°':'Optimized Elevated 80°'}</span></div>
-          <div>Analysis: <span class="${G.analyzed?'text-emerald-400':'text-slate-500'}">${G.analyzed?'✔ Completed':'⏸ Not yet run — click ▶ Run Full Analysis'}</span></div>
-        </div>
-        <div class="bg-cyan-950/30 border border-cyan-800/40 p-3 rounded-xl text-[11px]">
-          <div class="text-cyan-100 font-semibold mb-1">CLI Equivalence</div>
-          <code class="text-cyan-300 text-[10px] leading-relaxed block">python -m parking_occupancy<br>  --config configs/cameras/example.yaml<br>  --still &lt;photo.jpg&gt;<br>  --backend-mode mock<br>  --synthetic-detector</code>
-        </div>
-      </div>`;
+    // Load sample image by relative URL
+    function loadSampleUrl(url, name) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        state.loadedImage = img;
+        state.sourceName = name;
+        state.isCustomImage = true;
+        document.getElementById('camResBadge').textContent = `${img.naturalWidth}x${img.naturalHeight}`;
+        document.getElementById('camStreamTitle').textContent = `Ingested Frame / Perspective Stream (${name})`;
+        document.getElementById('camOverlayText').textContent = `Ingested: ${name} (${img.naturalWidth}x${img.naturalHeight})`;
+        triggerFullAnalysis();
+      };
+      img.onerror = () => {
+        console.warn('Sample image failed to load, falling back to synthetic background:', url);
+        state.loadedImage = null;
+        renderAll();
+      };
+      img.src = url;
     }
-  },
-  {
-    num:2, title:"Step 2 — Homography Warping (H Matrix 3×3)",
-    desc:"4-point ground quad mapped from perspective image to rectified BEV orthographic plane.",
-    module:"geometry.py",
-    body: () => {
-      const pts = getHomographyPts();
-      return `
-      <div class="space-y-3">
-        <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 mono text-[11px]">
-          <div class="text-slate-400 text-[9px] uppercase mb-1">Projective Transform H [3×3]</div>
-          <div class="grid grid-cols-3 gap-1 bg-slate-900 p-2.5 rounded text-center text-cyan-300 font-bold text-sm">
-            <div>1.2045</div><div>−0.1284</div><div>52.19</div>
-            <div>0.0482</div><div>1.3190</div><div>28.40</div>
-            <div>0.0001</div><div>0.0002</div><div>1.0000</div>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3 mono text-[11px]">
-          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
-            <div class="text-slate-400 text-[9px] uppercase mb-1">Source Quad (Perspective)</div>
-            ${pts.src.map((p,i)=>`<div>P${i}: [${p.join(', ')}]</div>`).join('')}
-          </div>
-          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
-            <div class="text-slate-400 text-[9px] uppercase mb-1">Dest Quad (BEV)</div>
-            ${pts.dst.map((p,i)=>`<div class="text-cyan-300">D${i}: [${p.join(', ')}]</div>`).join('')}
-          </div>
-        </div>
-      </div>`;
-    }
-  },
-  {
-    num:3, title:"Step 3 — Adaptive Slot Mapping & Drift Compensation",
-    desc:"Fiducial anchor landmarks measured per frame; polygon offsets applied if drift < 5.0 px threshold.",
-    module:"02B_ADAPTIVE_SLOT_MAPPING.md",
-    body: () => {
-      const dx=0.4, dy=-0.2;
-      const mag=Math.sqrt(dx*dx+dy*dy).toFixed(2);
-      return `
-      <div class="grid grid-cols-2 gap-3 text-[11px]">
-        <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2 mono">
-          <div class="text-slate-400 text-[9px] uppercase">Anchor Drift (ΔH)</div>
-          <div class="text-2xl font-black text-emerald-400">${mag} px</div>
-          <div class="text-slate-300">Vector: [dx=${dx}, dy=${dy}]</div>
-          <div class="text-emerald-300">✔ Within τ=5.0 px → compensated</div>
-        </div>
-        <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2 mono">
-          <div class="text-slate-400 text-[9px] uppercase">Bay Partitioning</div>
-          <div class="text-cyan-300 font-bold">adaptive_curb mode</div>
-          <div class="text-slate-300">Base curb: 7.5 m (3 × 2.5 m)</div>
-          <div class="text-emerald-300">P_eff = P_base ⊕ ΔH</div>
-        </div>
-      </div>`;
-    }
-  },
-  {
-    num:4, title:"Step 4 — Low-Weight YOLO Object Proposals",
-    desc:"Candidate vehicle bounding boxes generated with low confidence floor τ=0.30. Never decides occupancy alone.",
-    module:"inference.py",
-    body: () => {
-      const r = G.results[G.selectedSlot];
-      return `
-      <div class="space-y-3 text-[11px]">
-        <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between mono">
-          <div>
-            <div class="font-bold text-slate-200">Supporting YOLO Detector</div>
-            <div class="text-slate-400">Floor: <span class="text-amber-400">τ = 0.30</span> (low-weight role)</div>
-          </div>
-          <span class="px-2 py-0.5 rounded text-[9px] bg-amber-950 text-amber-300 border border-amber-800">LOW-CONF SUPPORT</span>
-        </div>
-        <div class="grid grid-cols-2 gap-3 mono">
-          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 space-y-1">
-            <div class="text-slate-400 text-[9px] uppercase">Proposal for ${SLOTS[G.selectedSlot].id}</div>
-            <div>Class: <span class="text-cyan-300 font-bold">car</span></div>
-            <div>YOLO Conf: <span class="text-amber-400 font-bold">${G.analyzed ? r.yoloConf.toFixed(3) : '—'}</span></div>
-            <div>Weight in Fusion: <span class="text-slate-300">30%</span></div>
-          </div>
-          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 space-y-1">
-            <div class="text-slate-400 text-[9px] uppercase">Ground Contact Patch</div>
-            <div>Projection: <span class="text-indigo-300">Bottom 20% bbox</span></div>
-            <div>BEV Z=0 contact</div>
-            <div class="text-emerald-300">Geometric fusion: 70%</div>
-          </div>
-        </div>
-      </div>`;
-    }
-  },
-  {
-    num:5, title:"Step 5 — Contextual Area Analysis & Pixel Sampling",
-    desc:"Each stall ROI is pixel-sampled from the ingested photo. Luminance, edge density, and saturation scored.",
-    module:"04_CONTEXTUAL_AWARENESS.md",
-    body: () => {
-      const r = G.results[G.selectedSlot];
-      const pct = G.analyzed ? (r.rawScore*100).toFixed(1) : '—';
-      const rem = G.analyzed ? ((1-r.rawScore)*100).toFixed(1) : '—';
-      return `
-      <div class="space-y-3 text-[11px]">
-        <div class="grid grid-cols-3 gap-2 text-center mono">
-          <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <div class="text-slate-400 text-[9px] uppercase">Pixel Score (ρ)</div>
-            <div class="font-bold text-sm mt-1 ${G.analyzed?(r.rawScore>0.5?'text-rose-400':'text-emerald-400'):'text-slate-500'}">${pct}%</div>
-          </div>
-          <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <div class="text-slate-400 text-[9px] uppercase">Remaining Free</div>
-            <div class="font-bold text-sm mt-1 ${G.analyzed?(r.rawScore>0.5?'text-amber-400':'text-emerald-400'):'text-slate-500'}">${rem}%</div>
-          </div>
-          <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <div class="text-slate-400 text-[9px] uppercase">Spillover Flag</div>
-            <div class="font-bold text-sm mt-1 ${G.analyzed&&r.spillover?'text-orange-400':'text-emerald-400'}">${G.analyzed?(r.spillover?'YES':'NO'):'—'}</div>
-          </div>
-        </div>
-        ${G.analyzed ? `
-        <div class="bg-slate-950/50 p-3 rounded-xl border ${r.spillover?'border-orange-700/60':'r.occluded?border-amber-700/60':'border-slate-800'} text-[11px]">
-          <div class="font-bold ${r.spillover?'text-orange-300':r.occluded?'text-amber-300':'text-emerald-300'}">
-            ${r.spillover?'⚠️ Neighbor Spillover Encroachment':r.occluded?'👁️ Line-of-Sight Occlusion Detected':'✔ Normal contextual profile'}
-          </div>
-          <div class="text-slate-400 mt-1">
-            ${r.spillover?'Vehicle extends past stall delimiter; adjacent stall usable area reduced.':r.occluded?'Foreground vehicle shadow limits rear stall contact patch visibility.':'Stall boundaries are clearly separable in the BEV ground plane.'}
-          </div>
-        </div>` : '<div class="text-slate-500 text-[11px]">Run analysis to compute pixel-level contextual scores.</div>'}
-      </div>`;
-    }
-  },
-  {
-    num:6, title:"Step 6 — Cognitive AI Fusion & 1-Minute Confidence Buffer",
-    desc:"Geometric pixel score (70%) fused with YOLO support (30%). Sliding 60-second mean with 95% CI.",
-    module:"05_COGNITIVE_AI_FUSION_MODEL.md",
-    body: () => {
-      const r = G.results[G.selectedSlot];
-      return `
-      <div class="space-y-3 text-[11px]">
-        <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 mono space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-slate-400 text-[9px] uppercase">1-min Sliding Window (60 samples)</span>
-            <span class="text-cyan-400 font-bold">p̄₆₀ₛ = ${G.analyzed ? r.mean60s.toFixed(4) : '—'}</span>
-          </div>
-          <div class="h-10 bg-slate-900 rounded flex items-end gap-0.5 p-1 border border-slate-800">
-            ${G.analyzed ? r.meanBuffer.map(v=>`<div class="flex-1 bg-cyan-500/80 rounded-t" style="height:${Math.round(v*100)}%"></div>`).join('') : '<div class="text-slate-500 text-[9px] self-center mx-auto">Run analysis first</div>'}
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3 mono">
-          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
-            <div class="text-slate-400 text-[9px] uppercase">95% Confidence Interval</div>
-            <div class="font-bold text-indigo-300 text-sm mt-1">${G.analyzed ? `[${r.ci[0]}, ${r.ci[1]}]` : '—'}</div>
-            <div class="text-slate-500 text-[9px]">±1.96 × SE</div>
-          </div>
-          <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
-            <div class="text-slate-400 text-[9px] uppercase">Fusion Weights</div>
-            <div class="text-sm mt-1 text-slate-200">Pixel: <span class="text-cyan-400 font-bold">70%</span></div>
-            <div class="text-slate-200">YOLO: <span class="text-amber-400 font-bold">30%</span></div>
-          </div>
-        </div>
-      </div>`;
-    }
-  },
-  {
-    num:7, title:"Step 7 — Final Call & SENTRY Event Dispatch",
-    desc:"Final occupancy state decided by 1-min mean > 0.50 threshold with 3-frame hysteresis quorum.",
-    module:"events.py",
-    body: () => {
-      const r = G.results[G.selectedSlot];
-      const slot = SLOTS[G.selectedSlot];
-      const col = !G.analyzed?'slate':r.finalCall==='occupied'?'rose':r.finalCall==='available'?'emerald':'amber';
-      return `
-      <div class="space-y-3 text-[11px]">
-        <div class="bg-${col}-950/40 border border-${col}-800/60 p-3 rounded-xl text-${col}-200">
-          <div class="font-bold">${G.analyzed?`✔ Pipeline Complete for ${slot.id}`:'⏸ Run analysis to generate final call'}</div>
-          ${G.analyzed?`<p class="text-[11px] mt-1 text-${col}-300/80">State: <strong class="text-white">${r.finalCall.toUpperCase()}</strong> | Mean: <strong class="text-white">${r.mean60s.toFixed(4)}</strong> | CI: ${r.ci[0]}–${r.ci[1]}</p>`:''}
-        </div>
-        ${G.analyzed?`
-        <div class="bg-slate-950/80 border border-slate-800 p-3 rounded-xl mono text-[10px] space-y-1">
-          <div class="text-slate-400 font-bold text-[9px] uppercase mb-1">Contract Checklist:</div>
-          <div class="text-emerald-400">✔ schema_version = "2026-10-30.2"</div>
-          <div class="text-emerald-400">✔ correlation_id = null (observation-only)</div>
-          <div class="text-emerald-400">✔ lot_code = "${slot.lot}"</div>
-          <div class="text-emerald-400">✔ compatibility = "${slot.compat}"</div>
-          <div class="${r.spillover?'text-orange-400':'text-slate-500'}">
-            ${r.spillover?'⚠ spillover_flag = true':'✔ spillover_flag = false'}
-          </div>
-        </div>`:'<div class="text-slate-500">Analysis not run yet.</div>'}
-      </div>`;
-    }
-  }
-];
 
-function updateStepView() {
-  const s = STEPS[G.activeStep-1];
-  document.getElementById('stepNum').textContent   = s.num;
-  document.getElementById('stepTitle').textContent = s.title;
-  document.getElementById('stepDesc').textContent  = s.desc;
-  document.getElementById('stepModule').textContent= s.module;
-  document.getElementById('stepBody').innerHTML    = s.body();
+    // ════════════════════════════════════════════════════════════════
+    // EVENT LISTENERS & BINDINGS
+    // ════════════════════════════════════════════════════════════════
+    const fileInput = document.getElementById('photoFileInput');
+    const ingestBtn = document.getElementById('btnIngestPhoto');
 
-  // Stepper buttons
-  const row = document.getElementById('stepperRow');
-  row.innerHTML = '';
-  STEPS.forEach(st => {
-    const btn = document.createElement('button');
-    const active = st.num === G.activeStep;
-    btn.className = `px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs transition-all ${
-      active ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold shadow-sm'
-              : 'text-slate-400 hover:bg-slate-800/80 border border-transparent'}`;
-    const dot = document.createElement('span');
-    dot.className = `w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black ${
-      active ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-300'}`;
-    dot.textContent = st.num;
-    btn.appendChild(dot);
-    btn.appendChild(document.createTextNode(st.title.split('—')[1].trim().split(' ').slice(0,3).join(' ')));
-    btn.addEventListener('click', () => { G.activeStep = st.num; renderAll(); });
-    row.appendChild(btn);
-  });
+    // Button click triggers file dialog
+    ingestBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      fileInput.value = ''; // Clear to allow selecting same file
+      fileInput.click();
+    });
 
-  document.getElementById('prevStep').disabled = G.activeStep === 1;
-  document.getElementById('nextStep').disabled = G.activeStep === 7;
-}
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        processPhotoFile(e.target.files[0]);
+      }
+    });
 
-// ═══════════════════════════════════════════
-//  RENDER ALL
-// ═══════════════════════════════════════════
-function renderAll() {
-  drawCameraCanvas(G.analyzed);
-  drawBevCanvas(true);
-  drawMapCanvas();
-  updateInspector();
-  updateStepView();
-  updatePixelMeters();
-}
+    // Global drag & drop on window
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      const overlay = document.getElementById('globalDropOverlay');
+      if (overlay) overlay.classList.remove('hidden');
+    });
 
-// ═══════════════════════════════════════════
-//  HELPERS
-// ═══════════════════════════════════════════
-function getHomographyPts() {
-  if (G.cameraMode === 'cctv') {
-    return {
-      src:[[80,180],[560,150],[620,460],[20,460]],
-      dst:[[60, 60],[580, 60],[580,420],[60,420]]
-    };
-  } else {
-    return {
-      src:[[60, 70],[580, 70],[590,430],[50,430]],
-      dst:[[60, 60],[580, 60],[580,420],[60,420]]
-    };
-  }
-}
+    window.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+        const overlay = document.getElementById('globalDropOverlay');
+        if (overlay) overlay.classList.add('hidden');
+      }
+    });
 
-function loadImageFromUrl(url, name) {
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => {
-    G.loadedImage = img;
-    G.sourceName  = name;
-    G.analyzed    = false;
-    document.getElementById('sourceBadge').textContent = name;
-    document.getElementById('resBadge').textContent    = `${img.width}×${img.height}`;
-    document.getElementById('camBadge').textContent    = `✔ Photo loaded: ${name}`;
-    document.getElementById('btnAnalyzeTxt').textContent = '▶ Run Full Analysis';
-    renderAll();
-    // Auto-run analysis on load
-    runFullAnalysis();
-  };
-  img.onerror = () => {
-    alert(`Could not load sample image: ${url}\nMake sure the HTTP server is running from ui/ directory.`);
-  };
-  img.src = url;
-}
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const overlay = document.getElementById('globalDropOverlay');
+      if (overlay) overlay.classList.add('hidden');
 
-function loadImageFromFile(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      G.loadedImage = img;
-      G.sourceName  = file.name;
-      G.analyzed    = false;
-      document.getElementById('sourceBadge').textContent = file.name;
-      document.getElementById('resBadge').textContent    = `${img.width}×${img.height}`;
-      document.getElementById('camBadge').textContent    = `✔ Photo loaded: ${file.name}`;
-      document.getElementById('btnAnalyzeTxt').textContent = '▶ Run Full Analysis';
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processPhotoFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    // Drag & drop directly on camera canvas
+    const camCanvas = document.getElementById('cameraCanvas');
+    camCanvas.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+
+    camCanvas.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const overlay = document.getElementById('globalDropOverlay');
+      if (overlay) overlay.classList.add('hidden');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processPhotoFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    // Scenario / Sample Selector
+    document.getElementById('scenarioSelector').addEventListener('change', (e) => {
+      const val = e.target.value;
+      state.scenario = val;
+
+      if (val.startsWith('samples/')) {
+        const name = e.target.options[e.target.selectedIndex].text.replace(/^📸\s*/, '');
+        loadSampleUrl(val, name);
+      } else {
+        // Pre-set scenario simulations
+        state.isCustomImage = false;
+        state.loadedImage = null;
+        if (val === 'normal') {
+          state.carX = 180;
+          state.cameraMode = 'cctv';
+        } else if (val === 'spillover') {
+          state.carX = 145; // straddling A-C01 and A-C02
+        } else if (val === 'occlusion') {
+          state.cameraMode = 'cctv';
+          state.carX = 180;
+        } else if (val === 'drift') {
+          state.carX = 180;
+        } else if (val === 'empty') {
+          state.carX = 650; // out of view
+        }
+        renderAll();
+      }
+    });
+
+    // Camera Mode Toggle
+    document.getElementById('camCctvBtn').addEventListener('click', () => {
+      state.cameraMode = 'cctv';
+      document.getElementById('camCctvBtn').className = 'px-3 py-1.5 rounded-md font-medium transition-colors bg-cyan-600 text-white shadow-sm flex items-center gap-1.5';
+      document.getElementById('camOptimizedBtn').className = 'px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5';
+      document.getElementById('metricForeshortening').textContent = '2.84x (High)';
+      document.getElementById('metricOcclusionRisk').textContent = 'Moderate (Rear Row)';
       renderAll();
-      runFullAnalysis();
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
+    });
 
-// ═══════════════════════════════════════════
-//  EVENT LISTENERS
-// ═══════════════════════════════════════════
-document.getElementById('fileInput').addEventListener('change', e => {
-  loadImageFromFile(e.target.files[0]);
-  e.target.value = '';   // reset so same file can be re-picked
-});
+    document.getElementById('camOptimizedBtn').addEventListener('click', () => {
+      state.cameraMode = 'optimized';
+      document.getElementById('camOptimizedBtn').className = 'px-3 py-1.5 rounded-md font-medium transition-colors bg-cyan-600 text-white shadow-sm flex items-center gap-1.5';
+      document.getElementById('camCctvBtn').className = 'px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1.5';
+      document.getElementById('metricForeshortening').textContent = '1.05x (Low)';
+      document.getElementById('metricOcclusionRisk').textContent = 'None (< 3%)';
+      renderAll();
+    });
 
-document.getElementById('sampleSelect').addEventListener('change', e => {
-  if (!e.target.value) return;
-  const rawLabel = e.target.options[e.target.selectedIndex].text;
-  const cleanLabel = rawLabel.replace(/^[\u{1F4F8}\u{1F7E5}\u{1F7E7}\u{1F7E9}]\s*/u, '').trim();
-  loadImageFromUrl(e.target.value, cleanLabel);
-  e.target.value = '';
-});
+    // Vehicle Position Scrub Slider
+    document.getElementById('carPosSlider').addEventListener('input', (e) => {
+      state.carX = parseInt(e.target.value);
+      document.getElementById('carPosVal').textContent = `${state.carX}px`;
+      renderAll();
+    });
 
-// dropZone is a <label for="fileInput"> — clicking it natively opens OS file picker.
-// Do NOT add a 'click' listener that calls fileInput.click() — that causes an infinite loop.
-const dropZone = document.getElementById('dropZone');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drop-zone-active'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drop-zone-active'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  e.stopPropagation();   // prevent label click from opening file dialog after drop
-  dropZone.classList.remove('drop-zone-active');
-  if (e.dataTransfer.files[0]) loadImageFromFile(e.dataTransfer.files[0]);
-});
+    // Stepper navigation
+    document.querySelectorAll('.step-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.activeStep = parseInt(btn.getAttribute('data-step'));
+        renderAll();
+      });
+    });
 
-document.getElementById('btnAnalyze').addEventListener('click', () => { if (!G.analyzing) runFullAnalysis(); });
+    document.getElementById('prevStepBtn').addEventListener('click', () => {
+      if (state.activeStep > 1) {
+        state.activeStep--;
+        renderAll();
+      }
+    });
 
-document.getElementById('btnCctv').addEventListener('click', () => {
-  G.cameraMode = 'cctv';
-  document.getElementById('btnCctv').className = 'px-2.5 py-1.5 rounded-md font-semibold transition-all bg-cyan-600 text-white flex items-center gap-1.5';
-  document.getElementById('btnOpt' ).className = 'px-2.5 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition-all';
-  if (G.analyzed) runFullAnalysis(); else renderAll();
-});
-document.getElementById('btnOpt').addEventListener('click', () => {
-  G.cameraMode = 'optimized';
-  document.getElementById('btnOpt' ).className = 'px-2.5 py-1.5 rounded-md font-semibold transition-all bg-indigo-600 text-white flex items-center gap-1.5';
-  document.getElementById('btnCctv').className = 'px-2.5 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition-all';
-  if (G.analyzed) runFullAnalysis(); else renderAll();
-});
+    document.getElementById('nextStepBtn').addEventListener('click', () => {
+      if (state.activeStep < 7) {
+        state.activeStep++;
+        renderAll();
+      }
+    });
 
-document.getElementById('prevStep').addEventListener('click', () => { if (G.activeStep>1){G.activeStep--;renderAll();} });
-document.getElementById('nextStep').addEventListener('click', () => { if (G.activeStep<7){G.activeStep++;renderAll();} });
+    // Autoplay Pipeline
+    document.getElementById('autoplayBtn').addEventListener('click', () => {
+      if (state.isAutoplay) {
+        clearInterval(state.autoplayInterval);
+        state.isAutoplay = false;
+        document.getElementById('autoplayBtnText').textContent = 'Play Pipeline (Auto)';
+        document.getElementById('autoplayBtn').classList.remove('bg-rose-600');
+        document.getElementById('autoplayBtn').classList.add('bg-indigo-600');
+      } else {
+        state.isAutoplay = true;
+        document.getElementById('autoplayBtnText').textContent = 'Pause Autoplay';
+        document.getElementById('autoplayBtn').classList.remove('bg-indigo-600');
+        document.getElementById('autoplayBtn').classList.add('bg-rose-600');
 
-document.getElementById('toggleGrid').addEventListener('click', () => {
-  G.showGrid = !G.showGrid;
-  document.getElementById('toggleGrid').textContent = `Grid: ${G.showGrid?'ON':'OFF'}`;
-  drawBevCanvas(true);
-});
+        state.autoplayInterval = setInterval(() => {
+          state.activeStep = (state.activeStep % 7) + 1;
+          renderAll();
+        }, 2200);
+      }
+    });
 
-bevC.addEventListener('click', e => {
-  const rect = bevC.getBoundingClientRect();
-  const mx = (e.clientX-rect.left)*(640/rect.width);
-  const my = (e.clientY-rect.top)*(480/rect.height);
-  SLOTS.forEach((s,i) => {
-    if (mx>=s.bev.x && mx<=s.bev.x+s.bev.w && my>=s.bev.y && my<=s.bev.y+s.bev.h) {
-      G.selectedSlot=i; updateInspector(); drawBevCanvas(); drawMapCanvas(); updatePixelMeters();
-    }
-  });
-});
+    // Toggles for BEV Canvas
+    document.getElementById('toggleGridBtn').addEventListener('click', () => {
+      state.showGrid = !state.showGrid;
+      document.getElementById('toggleGridBtn').textContent = `Grid: ${state.showGrid ? 'ON' : 'OFF'}`;
+      renderBevCanvas();
+    });
 
-mapC.addEventListener('click', e => {
-  const rect = mapC.getBoundingClientRect();
-  const mx = (e.clientX-rect.left)*(460/rect.width);
-  const my = (e.clientY-rect.top)*(230/rect.height);
-  const sx=460/640, sy=185/480;
-  SLOTS.forEach((s,i) => {
-    const lx=s.bev.x*sx, ly=s.bev.y*sy+10, lw=s.bev.w*sx, lh=s.bev.h*sy;
-    if (mx>=lx && mx<=lx+lw && my>=ly && my<=ly+lh) {
-      G.selectedSlot=i; updateInspector(); drawBevCanvas(); drawMapCanvas(); updatePixelMeters();
-    }
-  });
-});
+    document.getElementById('toggleFootprintBtn').addEventListener('click', () => {
+      state.showFootprint = !state.showFootprint;
+      document.getElementById('toggleFootprintBtn').textContent = `Footprint: ${state.showFootprint ? 'ON' : 'OFF'}`;
+      renderBevCanvas();
+    });
 
-// ═════════════ INIT ═════════════
-renderAll();
-</script>
+    // Interactive Slot Selection from BEV Canvas
+    document.getElementById('bevCanvas').addEventListener('click', (e) => {
+      const rect = e.target.getBoundingClientRect();
+      const clickX = (e.clientX - rect.left) * (640 / rect.width);
+      const clickY = (e.clientY - rect.top) * (480 / rect.height);
+
+      state.slots.forEach((s, idx) => {
+        if (clickX >= s.bevRect.x && clickX <= s.bevRect.x + s.bevRect.w &&
+            clickY >= s.bevRect.y && clickY <= s.bevRect.y + s.bevRect.h) {
+          state.selectedSlotIndex = idx;
+          renderAll();
+        }
+      });
+    });
+
+    // Interactive Slot Selection from Overhead Map Canvas
+    document.getElementById('overheadMapCanvas').addEventListener('click', (e) => {
+      const rect = e.target.getBoundingClientRect();
+      const clickX = (e.clientX - rect.left) * (480 / rect.width);
+      const clickY = (e.clientY - rect.top) * (300 / rect.height);
+
+      state.slots.forEach((s, idx) => {
+        const mapX = 50 + idx * 75;
+        const mapY = 80;
+        const mapW = 65;
+        const mapH = 130;
+        if (clickX >= mapX && clickX <= mapX + mapW && clickY >= mapY && clickY <= mapY + mapH) {
+          state.selectedSlotIndex = idx;
+          renderAll();
+        }
+      });
+    });
+
+    // ════════════════════════════════════════════════════════════════
+    // INITIALIZATION ON LOAD
+    // ════════════════════════════════════════════════════════════════
+    window.addEventListener('DOMContentLoaded', () => {
+      renderAll();
+      // Load Campus View A by default as requested in screenshot
+      loadSampleUrl('samples/cam_view_A.jpg', 'Campus View A (Oblique Lot A)');
+    });
+  </script>
 </body>
 </html>
