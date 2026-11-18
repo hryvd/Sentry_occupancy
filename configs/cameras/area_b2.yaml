@@ -1,0 +1,26 @@
+# Area B2 Camera Configuration (29-Slot Dual-Model Cross-Check)
+# Uses pinhole pure-rotation homography calibrated at 2048x1536 resolution.
+
+camera_id: cam-area-b2-01
+lot_code: B
+device_id: occupancy-area-b2-01
+model_version: yolox-midas-b2-v1
+
+# Camera source left empty so --still / --folder / --video / local runner supplies input
+source: ""
+
+# Must match Area B2 calibration resolution in configs/polygons/area_b2.json
+reference_resolution: [2048, 1536]
+
+# Path to Area B2 29-slot polygon & homography config (relative to module root)
+polygon_config: configs/polygons/area_b2.json
+
+# Dual-model ONNX weights live in models/ (gitignored) and are invoked by scripts/run_area_b2_local.py
+model_path: ""
+
+# Temporal smoothing — 1 frame confirms transition for still-frame local audits
+smoothing_consecutive_frames: 1
+
+# Freshness & heartbeat
+freshness_threshold_s: 30.0
+heartbeat_interval_s: 60.0
