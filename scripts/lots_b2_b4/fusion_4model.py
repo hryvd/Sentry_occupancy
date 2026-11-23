@@ -540,7 +540,18 @@ def render_lot_2d_map(
 
 def render_combined_2d_map(b2_img: np.ndarray, b4_img: np.ndarray, summary_text: str) -> np.ndarray:
     """Combine Lot B2 and Lot B4 2D maps side-by-side with a unified top banner."""
-    target_h = max(b2_img.shape[0], b4_img.shape[0])
+    return render_combined_3lot_2d_map(b2_img, None, b4_img, summary_text)
+
+
+def render_combined_3lot_2d_map(
+    b2_img: np.ndarray,
+    b3_img: np.ndarray | None,
+    b4_img: np.ndarray,
+    summary_text: str,
+) -> np.ndarray:
+    """Combine Lot B2, B3 (optional), and B4 2D maps side-by-side with a unified top banner."""
+    imgs = [im for im in (b2_img, b3_img, b4_img) if im is not None]
+    target_h = max(im.shape[0] for im in imgs)
 
     def resize_pad(im: np.ndarray, h: int) -> np.ndarray:
         if im.shape[0] == h:
@@ -548,16 +559,17 @@ def render_combined_2d_map(b2_img: np.ndarray, b4_img: np.ndarray, summary_text:
         scale = h / float(im.shape[0])
         return cv2.resize(im, (int(round(im.shape[1] * scale)), h), interpolation=cv2.INTER_AREA)
 
-    b2_r = resize_pad(b2_img, target_h)
-    b4_r = resize_pad(b4_img, target_h)
-    gap = 20
+    resized = [resize_pad(im, target_h) for im in imgs]
+    gap = 18
     banner_h = 66
-    W = b2_r.shape[1] + b4_r.shape[1] + gap
+    W = sum(im.shape[1] for im in resized) + gap * (len(resized) - 1)
     canvas = np.full((target_h + banner_h, W, 3), 240, dtype=np.uint8)
     cv2.rectangle(canvas, (0, 0), (W, banner_h), (15, 23, 42), -1)
-    cv2.putText(canvas, summary_text, (24, 42), cv2.FONT_HERSHEY_SIMPLEX, 0.72, (240, 248, 255), 2, cv2.LINE_AA)
-    canvas[banner_h:banner_h + target_h, :b2_r.shape[1]] = b2_r
-    canvas[banner_h:banner_h + target_h, b2_r.shape[1] + gap:] = b4_r
+    cv2.putText(canvas, summary_text, (24, 42), cv2.FONT_HERSHEY_SIMPLEX, 0.70, (240, 248, 255), 2, cv2.LINE_AA)
+    x_cur = 0
+    for im in resized:
+        canvas[banner_h:banner_h + target_h, x_cur:x_cur + im.shape[1]] = im
+        x_cur += im.shape[1] + gap
     return canvas
 
 
@@ -577,4 +589,411 @@ def render_photo_overlay(img_bgr: np.ndarray, tv, slots: list[SO.Slot], vehs: li
         r = row_by_id[s.id]
         c = to_photo(s.center[None])[0]
         _draw_pill_label(photo, f"{s.id} [{r['final_id']}]", c, scale=0.45 if s.row != "moto" else 0.36, fg=(255, 255, 255), bg=(20, 24, 34))
+    return photo
+
+
+def _detect_b3_vehicles(img_bgr: np.ndarray, models_dir: Path) -> np.ndarray:
+    """Run cached YOLOX-L across full frame + B3-specific row & far-end crops (cars/motos/buses/trucks only)."""
+    sess, inp_name, G, S = _get_yolox_bundle(models_dir)
+    H, W = img_bgr.shape[:2]
+
+    def run_crop(crop: np.ndarray, ox: int, oy: int, clip_edges: bool, sc_cut: float, cubic: bool = False):
+        ch, cw = crop.shape[:2]
+        if ch <= 0 or cw <= 0:
+            return []
+        r = min(640.0 / ch, 640.0 / cw)
+        pad = np.full((640, 640, 3), 114, dtype=np.uint8)
+        rs = cv2.resize(crop, (int(cw * r), int(ch * r)), interpolation=cv2.INTER_CUBIC if cubic else cv2.INTER_LINEAR)
+        pad[:rs.shape[0], :rs.shape[1]] = rs
+        out = sess.run(None, {inp_name: pad.transpose(2, 0, 1)[None].astype(np.float32)})[0][0]
+        xy, wh = (out[:, :2] + G) * S, np.exp(out[:, 2:4]) * S
+        sc = out[:, 4:5] * out[:, 5:]
+        res = []
+        for c in (2, 3, 5, 7):
+            m = sc[:, c] > sc_cut
+            for (cx, cy), (bw, bh), s in zip(xy[m], wh[m], sc[m, c]):
+                b = [
+                    (cx - bw / 2.0) / r + ox,
+                    (cy - bh / 2.0) / r + oy,
+                    (cx + bw / 2.0) / r + ox,
+                    (cy + bh / 2.0) / r + oy,
+                ]
+                if clip_edges and (
+                    (ox > 0 and b[0] < ox + 6)
+                    or (ox + cw < W and b[2] > ox + cw - 6)
+                    or (oy > 0 and b[1] < oy + 6)
+                    or (oy + ch < H and b[3] > oy + ch - 6)
+                ):
+                    continue
+                res.append([float(b[0]), float(b[1]), float(b[2]), float(b[3]), float(s), float(c)])
+        return res
+
+    dets = run_crop(img_bgr, 0, 0, False, 0.22)
+    b3_crops = [
+        ((0, 620, 1450, 1450), 0.22, False),
+        ((1100, 640, W, 1450), 0.22, False),
+        ((650, 1050, 2350, H), 0.22, False),
+        ((0, 950, 1400, H), 0.22, False),
+        ((950, 650, 2350, 1180), 0.18, True),
+        ((1650, 680, 2330, 1300), 0.18, True),
+        ((350, 680, 1420, 1220), 0.20, True),
+    ]
+    for (x0, y0, x1, y1), cut, cub in b3_crops:
+        x0c, y0c, x1c, y1c = max(0, x0), max(0, y0), min(W, x1), min(H, y1)
+        dets += run_crop(img_bgr[y0c:y1c, x0c:x1c], x0c, y0c, True, cut, cubic=cub)
+
+    if not dets:
+        return np.empty((0, 6))
+    d = np.array(dets, dtype=np.float64)
+    boxes_xywh = [[float(a), float(b), float(c - a), float(e - b)] for a, b, c, e, _, _ in d]
+    idx = cv2.dnn.NMSBoxes(boxes_xywh, [float(s) for s in d[:, 4]], 0.18, 0.45)
+    return d[np.array(idx).flatten()] if len(idx) > 0 else np.empty((0, 6))
+
+
+def _poly_box_overlap(poly_px: np.ndarray, box_xyxy: tuple[float, float, float, float], h: int, w: int) -> tuple[float, float]:
+    """Return (intersection / poly_area, intersection / box_area) using fast bounding-box masks."""
+    px0, py0 = max(0, int(np.floor(poly_px[:, 0].min()))), max(0, int(np.floor(poly_px[:, 1].min())))
+    px1, py1 = min(w, int(np.ceil(poly_px[:, 0].max()))), min(h, int(np.ceil(poly_px[:, 1].max())))
+    bx0, by0, bx1, by1 = [int(round(v)) for v in box_xyxy]
+    bx0, by0, bx1, by1 = max(0, bx0), max(0, by0), min(w, bx1), min(h, by1)
+    ix0, iy0 = min(px0, bx0), min(py0, by0)
+    ix1, iy1 = max(px1, bx1), max(py1, by1)
+    if ix1 <= ix0 or iy1 <= iy0:
+        return 0.0, 0.0
+    m_poly = np.zeros((iy1 - iy0, ix1 - ix0), dtype=np.uint8)
+    shifted = np.int32(np.round(poly_px)) - np.array([[ix0, iy0]], dtype=np.int32)
+    cv2.fillPoly(m_poly, [shifted], 1)
+    poly_area = float(m_poly.sum())
+    if poly_area < 1.0:
+        return 0.0, 0.0
+    m_box = np.zeros_like(m_poly)
+    m_box[by0 - iy0:by1 - iy0, bx0 - ix0:bx1 - ix0] = 1
+    box_area = float(m_box.sum())
+    if box_area < 1.0:
+        return 0.0, 0.0
+    inter = float(np.logical_and(m_poly == 1, m_box == 1).sum())
+    return inter / poly_area, inter / box_area
+
+
+def score_b3_4model(
+    img_bgr: np.ndarray,
+    cfg_b3: dict[str, Any],
+    homography_b3: dict[str, Any],
+    models_dir: Path,
+) -> tuple[list[dict[str, Any]], np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Run real 4-model fusion (M1=0.15, M2=0.15, M3=0.20, M4=0.50) across 20 Lot B3 bays."""
+    W_ref, H_ref = [int(v) for v in cfg_b3.get("image_size_px", [2576, 1932])]
+    img_ref = cv2.resize(img_bgr, (W_ref, H_ref), interpolation=cv2.INTER_LINEAR) if (img_bgr.shape[1], img_bgr.shape[0]) != (W_ref, H_ref) else img_bgr
+
+    # 1) YOLOX-L detections (filtering out boxes dominated by informal aisle vehicles A1-A3)
+    kept_raw = _detect_b3_vehicles(img_ref, models_dir)
+    informal_boxes = [tuple(iz["box_px"]) for iz in cfg_b3.get("informal_zones", []) if len(iz.get("box_px", [])) == 4]
+
+    def _box_ioa_inf(b):
+        bx0, by0, bx1, by1 = b[:4]
+        ba = max(1.0, (bx1 - bx0) * (by1 - by0))
+        best = 0.0
+        for ax0, ay0, ax1, ay1 in informal_boxes:
+            iw = max(0.0, min(bx1, ax1) - max(bx0, ax0))
+            ih = max(0.0, min(by1, ay1) - max(by0, ay0))
+            best = max(best, (iw * ih) / ba)
+        return best
+
+    kept = np.array([b for b in kept_raw if _box_ioa_inf(b) < 0.65], dtype=np.float64) if len(kept_raw) else np.empty((0, 6))
+
+    # 2) Warped ground-plane top-down view (area_b3.homography.json)
+    H_mat = np.array(homography_b3["H_photo_px_to_metres_u_v"], dtype=np.float64)
+    H_inv = np.linalg.inv(H_mat)
+    U0, U1, V0, V1 = [float(v) for v in homography_b3["plan_window_m"]]
+    ppm = int(homography_b3.get("px_per_m", 60))
+    Wp = int(round((U1 - U0) * ppm))
+    Hp = int(round((V1 - V0) * ppm))
+    S = np.array([[ppm, 0.0, -U0 * ppm], [0.0, ppm, -V0 * ppm], [0.0, 0.0, 1.0]], dtype=np.float64)
+    topview_bgr = cv2.warpPerspective(img_ref, S @ H_mat, (Wp, Hp), flags=cv2.INTER_LINEAR, borderValue=(28, 28, 28))
+
+    # Ground-plane baseline for MiDaS height residual using projected open aisle pavement + R10 pad
+    def _proj_uv_box(u0, u1, v0, v1):
+        pts = np.array([[u0, v0], [u1, v0], [u1, v1], [u0, v1]], dtype=np.float64)
+        p = np.c_[pts, np.ones(4)] @ H_inv.T
+        uv = p[:, :2] / p[:, 2:3]
+        x0 = max(10, min(W_ref - 20, int(uv[:, 0].min())))
+        y0 = max(680, min(H_ref - 20, int(uv[:, 1].min())))
+        x1 = max(x0 + 20, min(W_ref - 10, int(uv[:, 0].max())))
+        y1 = max(y0 + 20, min(H_ref - 10, int(uv[:, 1].max())))
+        return (x0, y0, x1, y1)
+
+    ground_patches = [
+        _proj_uv_box(-2.4, -0.6, -2.5, 2.5),
+        _proj_uv_box(-11.0, -6.8, 2.8, 5.2),
+        (1650, 1550, 2020, 1780),  # R10 inner pavement region
+    ]
+    depth_model = _get_midas_model(models_dir)
+    region_b3 = (0, 620, W_ref, H_ref)
+    res_map, sig_b3, orig_b3 = pac.ground_plane_residual(depth_model, img_ref, region_b3, ground_patches)
+    sig_b3 = max(float(sig_b3), 1e-6)
+
+    heat = np.zeros((H_ref, W_ref), dtype=np.float32)
+    heat[region_b3[1]:region_b3[3], region_b3[0]:region_b3[2]] = np.clip(res_map / (6.0 * sig_b3), 0.0, 1.0)
+    heightmap_bgr = cv2.addWeighted(img_ref, 0.55, cv2.applyColorMap((heat * 255).astype(np.uint8), cv2.COLORMAP_INFERNO), 0.45, 0)
+
+    # Top-down visual statistics (edge density + shadow-robust luminance variance relative to open drive aisle)
+    gray_tv = cv2.cvtColor(topview_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    edges_tv = np.abs(cv2.Laplacian(gray_tv, cv2.CV_32F, ksize=3))
+    aisle_u0, aisle_u1 = int(round((-2.4 - U0) * ppm)), int(round((-0.5 - U0) * ppm))
+    aisle_v0, aisle_v1 = int(round((-4.0 - V0) * ppm)), int(round((4.0 - V0) * ppm))
+    aisle_edge = float(np.percentile(edges_tv[aisle_v0:aisle_v1, aisle_u0:aisle_u1], 55))
+    aisle_std = float(np.std(topview_bgr[aisle_v0:aisle_v1, aisle_u0:aisle_u1]))
+
+    slots_raw = cfg_b3.get("slots", [])
+    scored: list[dict[str, Any]] = []
+
+    # First pass: collect YOLO + visual + elevation signals per bay
+    raw_metrics = []
+    for sp in slots_raw:
+        poly_px = np.array(sp["polygon_px"], dtype=np.float32)
+        cx_px, cy_px = poly_px.mean(axis=0)
+        z_val = float(pac.height_z(res_map, sig_b3, orig_b3, (float(cx_px), float(cy_px)), w=18))
+
+        best_yolo = 0.0
+        best_cov = 0.0
+        for b in kept:
+            sc = float(b[4])
+            i_poly, i_box = _poly_box_overlap(poly_px, tuple(b[:4]), H_ref, W_ref)
+            # Check center proximity too for foreshortened row cars
+            bx_c, by_c = 0.5 * (b[0] + b[2]), 0.5 * (b[1] + b[3])
+            in_poly = cv2.pointPolygonTest(poly_px, (float(bx_c), float(by_c)), False) >= 0
+            hit = max(i_poly, 0.72 * i_box if i_poly > 0.12 else 0.0, 0.85 if in_poly else 0.0)
+            if hit > 0.14:
+                weighted_sc = sc * min(1.0, 0.35 + 0.75 * hit)
+                if weighted_sc > best_yolo:
+                    best_yolo = weighted_sc
+                if hit > best_cov:
+                    best_cov = hit
+
+        # Sample interior of warped bay polygon (inset by 0.40 m to skip white painted lines like R10)
+        plan_m = np.array(sp["plan_polygon_m"], dtype=np.float64)
+        c_m = plan_m.mean(axis=0)
+        shrunk_m = c_m + (plan_m - c_m) * 0.72
+        shrunk_px = np.column_stack(((shrunk_m[:, 0] - U0) * ppm, (shrunk_m[:, 1] - V0) * ppm))
+        shrunk_i32 = np.int32(np.round(shrunk_px))
+        tv_mask = np.zeros((Hp, Wp), dtype=np.uint8)
+        cv2.fillPoly(tv_mask, [shrunk_i32], 1)
+        if tv_mask.sum() > 80:
+            e_m = float(edges_tv[tv_mask == 1].mean())
+            s_m = float(topview_bgr[tv_mask == 1].std())
+            patch_norm = gray_tv[tv_mask == 1]
+            # Shadow-normalized contrast
+            l_ratio = float(np.std(patch_norm) / max(float(np.mean(patch_norm)), 18.0))
+            tv_edge_score = _clip01((e_m - aisle_edge * 0.85) / max(aisle_edge * 2.0, 9.0))
+            tv_tex_score = _clip01((s_m - max(aisle_std * 0.9, 10.0)) / 30.0)
+            tv_norm_score = _clip01((l_ratio - 0.11) / 0.24)
+            tv_vis = _clip01(0.42 * tv_edge_score + 0.33 * tv_tex_score + 0.25 * tv_norm_score)
+        else:
+            tv_vis = 0.0
+
+        # Sample raw oblique photo patch gradient inside polygon_px
+        ph_mask = np.zeros((H_ref, W_ref), dtype=np.uint8)
+        cv2.fillPoly(ph_mask, [np.int32(np.round(poly_px))], 1)
+        x0r, y0r, w0r, h0r = cv2.boundingRect(np.int32(np.round(poly_px)))
+        x1r = min(W_ref, x0r + w0r)
+        y1r = min(H_ref, y0r + h0r)
+        x0r = max(0, x0r)
+        y0r = max(0, y0r)
+        if x1r > x0r + 2 and y1r > y0r + 2:
+            roi_g = cv2.cvtColor(img_ref[y0r:y1r, x0r:x1r], cv2.COLOR_BGR2GRAY).astype(np.float32)
+            roi_m = ph_mask[y0r:y1r, x0r:x1r] == 1
+            if roi_m.sum() > 50:
+                roi_lap = np.abs(cv2.Laplacian(roi_g, cv2.CV_32F, ksize=3))[roi_m].mean()
+                roi_vals = roi_g[roi_m]
+                ph_contrast = _clip01((float(np.std(roi_vals)) / max(float(np.mean(roi_vals)), 18.0) - 0.10) / 0.28)
+                ph_vis = _clip01(0.55 * _clip01((roi_lap - 7.5) / 18.0) + 0.45 * ph_contrast)
+            else:
+                ph_vis = 0.0
+        else:
+            ph_vis = 0.0
+
+        raw_metrics.append((sp, poly_px, plan_m, z_val, best_yolo, best_cov, tv_vis, ph_vis))
+
+    for sp, poly_px, plan_m, z_val, best_yolo, best_cov, tv_vis, ph_vis in raw_metrics:
+        z_norm = _clip01((z_val - 0.5) / 5.5)
+        initial_state = "occupied" if (best_yolo >= 0.28 or (z_val >= 2.2 and ph_vis >= 0.42)) else "available"
+
+        # M1 Geometry (15%): projected ground/polygon coverage + MiDaS positive elevation
+        model_1 = _clip01(0.45 * best_cov + 0.30 * z_norm + 0.25 * ph_vis)
+        if best_yolo >= 0.35 or z_val >= 2.5:
+            model_1 = max(model_1, _clip01(0.68 + 0.24 * max(best_cov, z_norm)))
+
+        # M2 Context (15%): shadow-robust interior visual deviance vs bare concrete + foreshortening context
+        model_2 = _clip01(0.60 * tv_vis + 0.40 * ph_vis)
+        if best_yolo >= 0.35 and tv_vis >= 0.30:
+            model_2 = max(model_2, _clip01(0.54 + 0.36 * tv_vis))
+
+        # M3 YOLO (20%): direct cached YOLOX-L vehicle evidence
+        model_3 = _clip01(best_yolo)
+
+        # M4 Top-Down Re-Analysis (50% HIGH VALUE): warped metric bay texture + YOLO + MiDaS fusion
+        td_core = 0.35 * max(tv_vis, ph_vis) + 0.35 * max(best_yolo, best_cov * 0.90) + 0.30 * z_norm
+        if best_yolo >= 0.28 and (tv_vis >= 0.28 or z_val >= 1.5):
+            model_4 = _clip01(max(td_core, 0.78 + 0.16 * max(tv_vis, best_yolo)))
+        else:
+            model_4 = _clip01(0.60 * tv_vis + 0.25 * best_yolo + 0.15 * z_norm)
+
+        mean_val = round(
+            _clip01(WEIGHTS[0] * model_1 + WEIGHTS[1] * model_2 + WEIGHTS[2] * model_3 + WEIGHTS[3] * model_4),
+            4,
+        )
+        final_state = "occupied" if mean_val >= 0.50 else "available"
+        final_id = 1 if final_state == "occupied" else 0
+
+        # Shift plan_polygon_m by (-U0, -V0) so local metric canvas sits in positive [0..22.5, 0..30.0]
+        shifted_m = [[round(float(u - U0), 2), round(float(v - V0), 2)] for u, v in plan_m]
+        c_shifted = [round(float(sum(p[0] for p in shifted_m) / len(shifted_m)), 2), round(float(sum(p[1] for p in shifted_m) / len(shifted_m)), 2)]
+        cx_px, cy_px = poly_px.mean(axis=0)
+
+        note_str = str(sp.get("note") or "").strip()
+        if not note_str:
+            note_str = f"4-model B3 fusion (YOLO={best_yolo:.2f}, z={z_val:.1f}σ)"
+
+        scored.append({
+            "area": "B3",
+            "slot_id": sp["slot_id"],
+            "row": sp["zone"],
+            "zone": sp["zone"],
+            "compatibility": sp.get("compatibility", "car_only"),
+            "space_id": sp["space_id"],
+            "initial_state": initial_state,
+            "model_1": round(model_1, 4),
+            "model_2": round(model_2, 4),
+            "model_3": round(model_3, 4),
+            "model_4": round(model_4, 4),
+            "mean": mean_val,
+            "final_state": final_state,
+            "final_id": final_id,
+            "backend_display_code": "TBD (B-P...)",
+            "matched_vehicle": f"YOLOX({best_yolo:.2f})" if best_yolo >= 0.20 else "",
+            "matched_kind": "car" if final_id == 1 else "",
+            "matched_method": "topdown+yolo" if best_yolo >= 0.28 else ("topdown+depth" if final_id == 1 else "clear concrete"),
+            "free_width_m": 2.4 if final_id == 0 else 0.0,
+            "cover": round(best_cov if best_cov > 0 else tv_vis, 3),
+            "height_z": round(z_val, 1),
+            "note": note_str,
+            "poly_m": shifted_m,
+            "center_m": c_shifted,
+            "anchor": [round(float(cx_px), 1), round(float(cy_px), 1)],
+            "topview": [round(float(c_shifted[0] * ppm), 1), round(float(c_shifted[1] * ppm), 1)],
+            "cam_poly": [[round(float(pt[0]), 1), round(float(pt[1]), 1)] for pt in poly_px],
+        })
+
+    size_m = np.array([U1 - U0, V1 - V0], dtype=np.float64)
+    valid_poly_m = np.array([[0.0, 0.0], [size_m[0], 0.0], [size_m[0], size_m[1]], [0.0, size_m[1]]], dtype=np.float64)
+    return scored, topview_bgr, heightmap_bgr, kept, valid_poly_m, size_m
+
+
+def render_b3_topview_overlay(
+    topview_raw: np.ndarray,
+    scored_rows: list[dict[str, Any]],
+    homography_b3: dict[str, Any],
+    informal_zones_m: dict[str, Any],
+) -> np.ndarray:
+    """Draw B3 bay rectangles, informal aisle markers, and 5 m scale bar on rectified topview."""
+    img = topview_raw.copy()
+    ppm = int(homography_b3.get("px_per_m", 60))
+    U0, _, V0, _ = [float(v) for v in homography_b3["plan_window_m"]]
+    for r in scored_rows:
+        pts = np.int32(np.round(np.array(r["poly_m"], dtype=np.float64) * ppm))
+        col = (60, 62, 224) if r["final_id"] == 1 else (65, 185, 78)
+        _draw_poly_alpha(img, pts, col, 0.25, outline=2)
+        cpx = np.array(r["topview"], dtype=np.float64)
+        _draw_pill_label(img, f"{r['slot_id']} [{r['final_id']}]", cpx, scale=0.45, fg=(255, 255, 255), bg=(20, 24, 34))
+    for k, info in informal_zones_m.items():
+        u0, u1, v0, v1 = info["u0u1v0v1"]
+        x0, y0 = int((u0 - U0) * ppm), int((v0 - V0) * ppm)
+        x1, y1 = int((u1 - U0) * ppm), int((v1 - V0) * ppm)
+        cv2.rectangle(img, (x0, y0), (x1, y1), (255, 175, 80), 2)
+        _draw_pill_label(img, f"{k} (aisle)", ((x0 + x1) / 2.0, (y0 + y1) / 2.0), scale=0.40, fg=(255, 255, 255), bg=(55, 75, 110))
+    T.scale_bar(img, ppm)
+    return img
+
+
+def render_b3_2d_map(
+    area_title: str,
+    scored_rows: list[dict[str, Any]],
+    homography_b3: dict[str, Any],
+    informal_zones_m: dict[str, Any],
+    ppm: int = 38,
+) -> np.ndarray:
+    """Render clean 2D metric output map for Lot B3 (20 bays + informal aisle zones)."""
+    U0, U1, V0, V1 = [float(v) for v in homography_b3["plan_window_m"]]
+    size_w, size_h = U1 - U0, V1 - V0
+    pad_top, pad_side, pad_bot = 138, 36, 52
+    W = int(round(size_w * ppm)) + 2 * pad_side
+    H = int(round(size_h * ppm)) + pad_top + pad_bot
+    img = np.full((H, W, 3), 248, dtype=np.uint8)
+
+    def to_px(pts) -> np.ndarray:
+        arr = np.asarray(pts, dtype=np.float64).reshape(-1, 2)
+        return np.column_stack((arr[:, 0] * ppm + pad_side, arr[:, 1] * ppm + pad_top))
+
+    gx = 0.0
+    while gx <= size_w:
+        xp = int(gx * ppm + pad_side)
+        cv2.line(img, (xp, pad_top - 6), (xp, H - pad_bot + 6), (233, 236, 242), 1)
+        gx += 2.0
+    gy = 0.0
+    while gy <= size_h:
+        yp = int(gy * ppm + pad_top)
+        cv2.line(img, (pad_side - 6, yp), (W - pad_side + 6, yp), (233, 236, 242), 1)
+        gy += 2.0
+
+    # Informal aisle vehicles (non-bays)
+    for k, info in informal_zones_m.items():
+        u0, u1, v0, v1 = info["u0u1v0v1"]
+        rect_m = np.array([[u0 - U0, v0 - V0], [u1 - U0, v0 - V0], [u1 - U0, v1 - V0], [u0 - U0, v1 - V0]])
+        _draw_poly_alpha(img, to_px(rect_m), (185, 165, 140), 0.25, outline=2)
+        _draw_pill_label(img, f"{k}:{info.get('kind', 'aisle')}", to_px(rect_m.mean(axis=0)[None])[0], scale=0.36, fg=(255, 255, 255), bg=(90, 105, 130))
+
+    # 20 parking bays
+    for r in scored_rows:
+        col = (60, 62, 224) if r["final_id"] == 1 else (65, 185, 78)
+        pts_px = to_px(r["poly_m"])
+        _draw_poly_alpha(img, pts_px, col, 0.34, outline=2)
+        txt = f"{r['slot_id']} {r['mean']*100:.0f}% [{r['final_id']}]"
+        fg = (165, 25, 25) if r["final_id"] == 1 else (20, 115, 45)
+        _draw_pill_label(img, txt, to_px([r["center_m"]])[0], scale=0.38, fg=fg, bg=(255, 255, 255))
+
+    occ_cnt = sum(r["final_id"] == 1 for r in scored_rows)
+    free_cnt = sum(r["final_id"] == 0 for r in scored_rows)
+    tot_cnt = len(scored_rows)
+    rate = (occ_cnt / tot_cnt * 100.0) if tot_cnt else 0.0
+    cv2.rectangle(img, (16, 12), (W - 16, 112), (24, 30, 42), -1)
+    cv2.rectangle(img, (16, 12), (W - 16, 112), (56, 189, 248), 2)
+    cv2.putText(img, area_title, (30, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.66, (240, 246, 255), 2, cv2.LINE_AA)
+    cv2.putText(img, f"Occupied (1): {occ_cnt}/{tot_cnt} ({rate:.1f}%)   |   Available (0): {free_cnt}", (30, 68), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (110, 231, 183), 1, cv2.LINE_AA)
+    cv2.putText(img, "4-Model Fusion: mean = 0.15*M1 + 0.15*M2 + 0.20*M3 + 0.50*M4(TopDown)   |   R10 = PWD Bay", (30, 94), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (186, 200, 220), 1, cv2.LINE_AA)
+
+    sb_px = int(5 * ppm)
+    sx0, sy0 = pad_side, H - 22
+    cv2.line(img, (sx0, sy0), (sx0 + sb_px, sy0), (40, 46, 58), 3)
+    cv2.line(img, (sx0, sy0 - 6), (sx0, sy0 + 6), (40, 46, 58), 3)
+    cv2.line(img, (sx0 + sb_px, sy0 - 6), (sx0 + sb_px, sy0 + 6), (40, 46, 58), 3)
+    cv2.putText(img, "5 m metric scale", (sx0 + sb_px + 10, sy0 + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.44, (40, 46, 58), 1, cv2.LINE_AA)
+    return img
+
+
+def render_b3_photo_overlay(
+    img_bgr: np.ndarray,
+    scored_rows: list[dict[str, Any]],
+    informal_zones: list[dict[str, Any]],
+) -> np.ndarray:
+    """Draw Lot B3 bay polygons and informal aisle zone boxes back onto camera perspective photo."""
+    photo = img_bgr.copy()
+    for iz in informal_zones:
+        bx0, by0, bx1, by1 = [int(v) for v in iz["box_px"]]
+        cv2.rectangle(photo, (bx0, by0), (bx1, by1), (255, 165, 70), 3)
+        _draw_pill_label(photo, f"{iz['id']}:aisle", ((bx0 + bx1) / 2.0, by0 + 18), scale=0.42, fg=(255, 255, 255), bg=(50, 75, 120))
+    for r in scored_rows:
+        col = (60, 62, 224) if r["final_id"] == 1 else (65, 185, 78)
+        _draw_poly_alpha(photo, np.array(r["cam_poly"], dtype=np.float64), col, 0.28, outline=2)
+    for r in scored_rows:
+        _draw_pill_label(photo, f"{r['slot_id']} [{r['final_id']}]", r["anchor"], scale=0.46, fg=(255, 255, 255), bg=(20, 24, 34))
     return photo

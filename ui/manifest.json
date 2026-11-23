@@ -1,0 +1,9 @@
+{
+  "name": "SENTRY Parking Capture",
+  "short_name": "SENTRY",
+  "description": "Mobile-first parking lot photo upload & 4-model occupancy visualizer for Lot B2, B3 & B4",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617"
+}

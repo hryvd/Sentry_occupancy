@@ -1,0 +1,29 @@
+# Area B3 camera config (provisional from hand-held photo ui/samples/area_b3_raw.jpg).
+# Includes CaptureConfig keys + change-monitor parameters for 4-model B2/B3/B4 pipeline.
+camera_id: cam-area-b3-01
+device_id: occupancy-area-b3-01
+producer_id: occupancy-area-b3-01        # one device_id and one API key per camera (SEC-01)
+lot_code: "B"
+area: B3
+model_version: sentry-4model-b2-b3-b4-v1
+
+source: ""                               # TODO: RTSP / video URL of the fixed camera
+reference_resolution: [2576, 1932]
+polygon_config: configs/polygons/area_b3.json
+polygons: configs/polygons/area_b3.json
+model_path: ""
+calibration_version: area-b3-4model-v0-provisional
+reference_image: ui/samples/area_b3_raw.jpg   # hand-held photo; replace with fixed-camera frame
+homography: configs/polygons/area_b3.homography.json
+
+smoothing_consecutive_frames: 1
+freshness_threshold_s: 30.0               # no fresh frame for >30 s -> every slot "unknown", confidence null
+heartbeat_interval_s: 60.0
+
+monitor:
+  poll_interval_s: 2.0
+  persist_frames: 3                       # change must last 3 polls (~6 s): filters pedestrians/umbrellas
+  change_threshold: 0.35                  # 1 - NCC inside the bay polygon; shadow-robust
+  active_cycle_s: 20.0                    # full final-state update every 20 s while active (<=30 s => >=2/min)
+  settle_cycles: 2                        # quiet cycles before dropping back to heartbeats only
+  refresh_interval_s: 0                   # 0 = change-driven only; 300 = optional anti-entropy refresh

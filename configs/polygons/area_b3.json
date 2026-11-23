@@ -1,0 +1,1373 @@
+{
+  "area": "B3",
+  "lot_code": "B",
+  "camera_id": "cam-area-b3-01",
+  "producer_id": "occupancy-area-b3-01",
+  "calibration_version": "area-b3-4model-v0-provisional",
+  "reference_image": "ui/samples/area_b3_raw.jpg",
+  "image_size_px": [
+    2576,
+    1932
+  ],
+  "calibration_status": "PROVISIONAL - polygons read from a hand-held photo, not the fixed camera frame; no homography yet",
+  "numbering": "L and R rows numbered top of photo -> bottom (far -> near); C1 = painted centre bay",
+  "slot_count": 20,
+  "slots": [
+    {
+      "slot_id": "L1",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000301",
+      "polygon_px": [
+        [
+          1185,
+          715
+        ],
+        [
+          1397,
+          768
+        ],
+        [
+          1325,
+          796
+        ],
+        [
+          1113,
+          743
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          -13.2,
+          -19.2
+        ],
+        [
+          -8.2,
+          -19.2
+        ],
+        [
+          -8.2,
+          -16.8
+        ],
+        [
+          -13.2,
+          -16.8
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1155,
+          776
+        ],
+        [
+          1409,
+          784
+        ],
+        [
+          1355,
+          822
+        ],
+        [
+          1091,
+          811
+        ]
+      ]
+    },
+    {
+      "slot_id": "L2",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000302",
+      "polygon_px": [
+        [
+          1097,
+          739
+        ],
+        [
+          1341,
+          800
+        ],
+        [
+          1293,
+          835
+        ],
+        [
+          1049,
+          774
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          -13.2,
+          -16.8
+        ],
+        [
+          -8.2,
+          -16.8
+        ],
+        [
+          -8.2,
+          -14.4
+        ],
+        [
+          -13.2,
+          -14.4
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1091,
+          811
+        ],
+        [
+          1355,
+          822
+        ],
+        [
+          1295,
+          865
+        ],
+        [
+          1020,
+          850
+        ]
+      ]
+    },
+    {
+      "slot_id": "L3",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000303",
+      "polygon_px": [
+        [
+          1084,
+          782
+        ],
+        [
+          1259,
+          826
+        ],
+        [
+          1196,
+          865
+        ],
+        [
+          1021,
+          821
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          -13.2,
+          -14.4
+        ],
+        [
+          -8.2,
+          -14.4
+        ],
+        [
+          -8.2,
+          -12.0
+        ],
+        [
+          -13.2,
+          -12.0
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1020,
+          850
+        ],
+        [
+          1295,
+          865
+        ],
+        [
+          1226,
+          914
+        ],
+        [
+          939,
+          894
+        ]
+      ]
+    },
+    {
+      "slot_id": "L4",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000304",
+      "polygon_px": [
+        [
+          968,
+          808
+        ],
+        [
+          1249,
+          878
+        ],
+        [
+          1143,
+          916
+        ],
+        [
+          862,
+          846
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          -13.2,
+          -12.0
+        ],
+        [
+          -8.2,
+          -12.0
+        ],
+        [
+          -8.2,
+          -9.6
+        ],
+        [
+          -13.2,
+          -9.6
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          939,
+          894
+        ],
+        [
+          1226,
+          914
+        ],
+        [
+          1147,
+          969
+        ],
+        [
+          848,
+          944
+        ]
+      ]
+    },
+    {
+      "slot_id": "L5",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000305",
+      "polygon_px": [
+        [
+          844,
+          842
+        ],
+        [
+          1161,
+          921
+        ],
+        [
+          1054,
+          975
+        ],
+        [
+          736,
+          896
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          -13.2,
+          -9.6
+        ],
+        [
+          -8.2,
+          -9.6
+        ],
+        [
+          -8.2,
+          -7.2
+        ],
+        [
+          -13.2,
+          -7.2
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          848,
+          944
+        ],
+        [
+          1147,
+          969
+        ],
+        [
+          1056,
+          1034
+        ],
+        [
+          743,
+          1001
+        ]
+      ]
+    },
+    {
+      "slot_id": "L6",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000306",
+      "polygon_px": [
+        [
+          764,
+          903
+        ],
+        [
+          1026,
+          969
+        ],
+        [
+          902,
+          1038
+        ],
+        [
+          640,
+          972
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          -13.2,
+          -7.2
+        ],
+        [
+          -8.2,
+          -7.2
+        ],
+        [
+          -8.2,
+          -4.8
+        ],
+        [
+          -13.2,
+          -4.8
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          743,
+          1001
+        ],
+        [
+          1056,
+          1034
+        ],
+        [
+          950,
+          1109
+        ],
+        [
+          623,
+          1067
+        ]
+      ]
+    },
+    {
+      "slot_id": "L7",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000307",
+      "polygon_px": [
+        [
+          587,
+          959
+        ],
+        [
+          955,
+          1051
+        ],
+        [
+          803,
+          1130
+        ],
+        [
+          435,
+          1038
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          -13.2,
+          -4.8
+        ],
+        [
+          -8.2,
+          -4.8
+        ],
+        [
+          -8.2,
+          -2.4
+        ],
+        [
+          -13.2,
+          -2.4
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          623,
+          1067
+        ],
+        [
+          950,
+          1109
+        ],
+        [
+          824,
+          1199
+        ],
+        [
+          482,
+          1144
+        ]
+      ]
+    },
+    {
+      "slot_id": "L8",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000308",
+      "polygon_px": [
+        [
+          442,
+          1040
+        ],
+        [
+          796,
+          1128
+        ],
+        [
+          616,
+          1230
+        ],
+        [
+          262,
+          1141
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          -13.2,
+          -2.4
+        ],
+        [
+          -8.2,
+          -2.4
+        ],
+        [
+          -8.2,
+          0.0
+        ],
+        [
+          -13.2,
+          0.0
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          482,
+          1144
+        ],
+        [
+          824,
+          1199
+        ],
+        [
+          672,
+          1307
+        ],
+        [
+          317,
+          1235
+        ]
+      ]
+    },
+    {
+      "slot_id": "L9",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000309",
+      "polygon_px": [
+        [
+          181,
+          1121
+        ],
+        [
+          696,
+          1250
+        ],
+        [
+          499,
+          1366
+        ],
+        [
+          -16,
+          1237
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          -13.2,
+          0.0
+        ],
+        [
+          -8.2,
+          0.0
+        ],
+        [
+          -8.2,
+          2.4
+        ],
+        [
+          -13.2,
+          2.4
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          317,
+          1235
+        ],
+        [
+          672,
+          1307
+        ],
+        [
+          485,
+          1439
+        ],
+        [
+          118,
+          1343
+        ]
+      ]
+    },
+    {
+      "slot_id": "R1",
+      "zone": "right",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000310",
+      "polygon_px": [
+        [
+          2003,
+          755
+        ],
+        [
+          2279,
+          744
+        ],
+        [
+          2257,
+          781
+        ],
+        [
+          1981,
+          792
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          0.0,
+          -21.6
+        ],
+        [
+          4.33,
+          -21.6
+        ],
+        [
+          4.33,
+          -19.2
+        ],
+        [
+          0.0,
+          -19.2
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1935,
+          760
+        ],
+        [
+          2238,
+          767
+        ],
+        [
+          2233,
+          809
+        ],
+        [
+          1912,
+          799
+        ]
+      ]
+    },
+    {
+      "slot_id": "R2",
+      "zone": "right",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000311",
+      "polygon_px": [
+        [
+          1988,
+          792
+        ],
+        [
+          2250,
+          782
+        ],
+        [
+          2232,
+          818
+        ],
+        [
+          1970,
+          828
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          0.0,
+          -19.2
+        ],
+        [
+          4.33,
+          -19.2
+        ],
+        [
+          4.33,
+          -16.8
+        ],
+        [
+          0.0,
+          -16.8
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1912,
+          799
+        ],
+        [
+          2233,
+          809
+        ],
+        [
+          2227,
+          858
+        ],
+        [
+          1885,
+          844
+        ]
+      ]
+    },
+    {
+      "slot_id": "R3",
+      "zone": "right",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000312",
+      "polygon_px": [
+        [
+          1968,
+          828
+        ],
+        [
+          2235,
+          817
+        ],
+        [
+          2220,
+          866
+        ],
+        [
+          1953,
+          876
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          0.0,
+          -16.8
+        ],
+        [
+          4.33,
+          -16.8
+        ],
+        [
+          4.33,
+          -14.4
+        ],
+        [
+          0.0,
+          -14.4
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1885,
+          844
+        ],
+        [
+          2227,
+          858
+        ],
+        [
+          2221,
+          914
+        ],
+        [
+          1854,
+          895
+        ]
+      ]
+    },
+    {
+      "slot_id": "R4",
+      "zone": "right",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000313",
+      "polygon_px": [
+        [
+          1937,
+          877
+        ],
+        [
+          2236,
+          865
+        ],
+        [
+          2224,
+          931
+        ],
+        [
+          1926,
+          943
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          0.0,
+          -14.4
+        ],
+        [
+          4.33,
+          -14.4
+        ],
+        [
+          4.33,
+          -12.0
+        ],
+        [
+          0.0,
+          -12.0
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1854,
+          895
+        ],
+        [
+          2221,
+          914
+        ],
+        [
+          2213,
+          980
+        ],
+        [
+          1818,
+          953
+        ]
+      ]
+    },
+    {
+      "slot_id": "R5",
+      "zone": "right",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000314",
+      "polygon_px": [
+        [
+          1916,
+          944
+        ],
+        [
+          2234,
+          931
+        ],
+        [
+          2211,
+          982
+        ],
+        [
+          1894,
+          994
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          0.0,
+          -12.0
+        ],
+        [
+          4.33,
+          -12.0
+        ],
+        [
+          4.33,
+          -9.6
+        ],
+        [
+          0.0,
+          -9.6
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1818,
+          953
+        ],
+        [
+          2213,
+          980
+        ],
+        [
+          2204,
+          1058
+        ],
+        [
+          1776,
+          1022
+        ]
+      ]
+    },
+    {
+      "slot_id": "R6",
+      "zone": "right",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000315",
+      "polygon_px": [
+        [
+          1889,
+          994
+        ],
+        [
+          2216,
+          981
+        ],
+        [
+          2186,
+          1060
+        ],
+        [
+          1859,
+          1073
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          0.0,
+          -9.6
+        ],
+        [
+          4.33,
+          -9.6
+        ],
+        [
+          4.33,
+          -7.2
+        ],
+        [
+          0.0,
+          -7.2
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1776,
+          1022
+        ],
+        [
+          2204,
+          1058
+        ],
+        [
+          2193,
+          1152
+        ],
+        [
+          1726,
+          1104
+        ]
+      ]
+    },
+    {
+      "slot_id": "R7",
+      "zone": "right",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000316",
+      "polygon_px": [
+        [
+          1767,
+          1077
+        ],
+        [
+          2278,
+          1057
+        ],
+        [
+          2259,
+          1196
+        ],
+        [
+          1748,
+          1217
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          0.0,
+          -7.2
+        ],
+        [
+          4.33,
+          -7.2
+        ],
+        [
+          4.33,
+          -4.8
+        ],
+        [
+          0.0,
+          -4.8
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1726,
+          1104
+        ],
+        [
+          2193,
+          1152
+        ],
+        [
+          2179,
+          1269
+        ],
+        [
+          1666,
+          1202
+        ]
+      ]
+    },
+    {
+      "slot_id": "R8",
+      "zone": "right",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000317",
+      "polygon_px": [
+        [
+          1760,
+          1216
+        ],
+        [
+          2248,
+          1197
+        ],
+        [
+          2213,
+          1356
+        ],
+        [
+          1725,
+          1376
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          0.0,
+          -4.8
+        ],
+        [
+          4.33,
+          -4.8
+        ],
+        [
+          4.33,
+          -2.4
+        ],
+        [
+          0.0,
+          -2.4
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1666,
+          1202
+        ],
+        [
+          2179,
+          1269
+        ],
+        [
+          2162,
+          1415
+        ],
+        [
+          1593,
+          1323
+        ]
+      ]
+    },
+    {
+      "slot_id": "R9",
+      "zone": "right",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000318",
+      "polygon_px": [
+        [
+          1718,
+          1376
+        ],
+        [
+          2219,
+          1356
+        ],
+        [
+          2167,
+          1522
+        ],
+        [
+          1666,
+          1542
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "",
+      "plan_polygon_m": [
+        [
+          0.0,
+          -2.4
+        ],
+        [
+          4.33,
+          -2.4
+        ],
+        [
+          4.33,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1593,
+          1323
+        ],
+        [
+          2162,
+          1415
+        ],
+        [
+          2140,
+          1605
+        ],
+        [
+          1500,
+          1475
+        ]
+      ]
+    },
+    {
+      "slot_id": "R10",
+      "zone": "right",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000319",
+      "polygon_px": [
+        [
+          1600,
+          1495
+        ],
+        [
+          2140,
+          1605
+        ],
+        [
+          2115,
+          1865
+        ],
+        [
+          1600,
+          1730
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "available",
+      "baseline_final_id": 0,
+      "note": "accessible (PWD) bay: reservation flag lives in backend metadata",
+      "plan_polygon_m": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          4.33,
+          0.0
+        ],
+        [
+          4.33,
+          2.4
+        ],
+        [
+          0.0,
+          2.4
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1500,
+          1475
+        ],
+        [
+          2140,
+          1605
+        ],
+        [
+          2110,
+          1862
+        ],
+        [
+          1380,
+          1672
+        ]
+      ]
+    },
+    {
+      "slot_id": "C1",
+      "zone": "center",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000320",
+      "polygon_px": [
+        [
+          800,
+          1440
+        ],
+        [
+          930,
+          1235
+        ],
+        [
+          1270,
+          1130
+        ],
+        [
+          1300,
+          1300
+        ],
+        [
+          1130,
+          1485
+        ]
+      ],
+      "visibility": "full",
+      "baseline_state": "occupied",
+      "baseline_final_id": 1,
+      "note": "painted bay, low geometry confidence",
+      "plan_polygon_m": [
+        [
+          -5.5,
+          -4.0
+        ],
+        [
+          -2.9,
+          -4.0
+        ],
+        [
+          -2.9,
+          1.6
+        ],
+        [
+          -5.5,
+          1.6
+        ]
+      ],
+      "ground_polygon_px": [
+        [
+          1121,
+          1167
+        ],
+        [
+          1351,
+          1199
+        ],
+        [
+          1064,
+          1514
+        ],
+        [
+          793,
+          1449
+        ]
+      ]
+    }
+  ],
+  "informal_zones": [
+    {
+      "id": "A1",
+      "kind": "jeepney",
+      "box_px": [
+        1404,
+        773,
+        1610,
+        960
+      ],
+      "counts_as_bay": false
+    },
+    {
+      "id": "A2",
+      "kind": "sedan",
+      "box_px": [
+        1240,
+        935,
+        1485,
+        1105
+      ],
+      "counts_as_bay": false
+    },
+    {
+      "id": "A3",
+      "kind": "sedan",
+      "box_px": [
+        1539,
+        715,
+        1668,
+        837
+      ],
+      "counts_as_bay": false
+    }
+  ],
+  "ignore": {
+    "classes": [
+      "person",
+      "umbrella"
+    ],
+    "reason": "pedestrians cross the centre and right bays all day; they are never occupancy"
+  },
+  "homography": "configs/polygons/area_b3.homography.json",
+  "informal_zones_m": {
+    "A1": {
+      "kind": "jeepney",
+      "u0u1v0v1": [
+        -6.3,
+        -3.2,
+        -18.0,
+        -12.0
+      ]
+    },
+    "A2": {
+      "kind": "sedan",
+      "u0u1v0v1": [
+        -6.3,
+        -3.2,
+        -11.0,
+        -6.5
+      ]
+    },
+    "A3": {
+      "kind": "sedan (top)",
+      "u0u1v0v1": [
+        -6.3,
+        -3.2,
+        -23.5,
+        -20.0
+      ]
+    }
+  }
+}

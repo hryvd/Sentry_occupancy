@@ -1,6 +1,6 @@
 # Backend Integration Q&A — Campus Lot B (`B1–B5`, Focus Areas `B2, B3, B4`)
 
-> **Scope Summary:** Campus parking sensors cover **Lot `B` sub-areas `B1–B5`** (`lot_code: "B"`). Active calibration and engineering coverage center on **`B2`, `B3`, and `B4`** (`B2` and `B4` are calibrated and running across **49 bays**; `B3` is in active rollout awaiting its fixed camera reference frame; `B1` and `B5` are planned). Lots `A`, `C`, and `D` are outside this service scope.
+> **Scope Summary:** Campus parking sensors cover **Lot `B` sub-areas `B1–B5`** (`lot_code: "B"`). Active calibration and engineering coverage center on **`B2`, `B3`, and `B4`** (`B2` (22 bays), `B3` (20 bays provisional), and `B4` (27 bays) are active across **69 total bays**; `B1` and `B5` are planned). Lots `A`, `C`, and `D` are outside this service scope.
 >
 > **Architecture Alignment:** Backend HTTP `POST` occupancy messages are driven directly from our 4-model fusion CSV (`area,slot_id,zone,compatibility,space_id,initial_state,model_1,model_2,model_3,model_4,mean,final_state,final_id,backend_display_code`). A lightweight continuous change-monitor suppresses occupancy `POST`s when there is no significant vehicle change (sending only `60s` heartbeats) and dispatches **at least 2 updated full final-state payloads per minute** (`<= 30s` cadence across active cameras) during high-change activity.
 
@@ -15,7 +15,7 @@ All vision-monitored spaces in this rollout belong to campus **Lot `B` (`lot_cod
 | Sub-Area | Campus Group | Status | Calibrated Slot Count | Producer / `device_id` | Polygon & Camera Configs |
 |---|---|---|---|---|---|
 | **`B2`** | `B1–B5` | **Calibrated & Active** | **22** (`L1–L11`, `R1–R11`) | `occupancy-area-b2-01` | [`area_b2.json`](../configs/polygons/area_b2.json) / [`area_b2.yaml`](../configs/cameras/area_b2.yaml) |
-| **`B3`** | `B1–B5` | **Understood — Active Rollout** *(pending reference image)* | TBD on camera frame lock | `occupancy-area-b3-01` *(planned)* | Planned (`area_b3.json` / `area_b3.yaml`) |
+| **`B3`** | `B1–B5` | **Calibrated (Provisional)** | **20** (`L1–L9`, `R1–R10` PWD, `C1`) | `occupancy-area-b3-01` | [`area_b3.json`](../configs/polygons/area_b3.json) / [`area_b3.yaml`](../configs/cameras/area_b3.yaml) |
 | **`B4`** | `B1–B5` | **Calibrated & Active** | **27** (`L1–L8`, `R1–R10`, `MB1–MB9`) | `occupancy-area-b4-01` | [`area_b4.json`](../configs/polygons/area_b4.json) / [`area_b4.yaml`](../configs/cameras/area_b4.yaml) |
 | **`B1`, `B5`** | `B1–B5` | **Planned Expansion** | TBD | `occupancy-area-b1-01`, `occupancy-area-b5-01` | Planned |
 | `A`, `C`, `D` | Outside scope | Not covered by this service | — | — | — |
@@ -25,15 +25,15 @@ All vision-monitored spaces in this rollout belong to campus **Lot `B` (`lot_cod
 **Yes — a mapping table is required.**
 
 - Inside the AI service and CSV output (`lot_b2_b4_occupancy.csv`), slots are identified human-readably by **`(area, slot_id)`** — for example `("B2", "L1")` or `("B4", "MB1")`. Note that `"L1"` appears in both `B2` and `B4`, so `area` is always required as part of the natural key.
-- Over HTTP (`CANDIDATE-2026-10-30.2`), `data.space_id` carries a UUID string read from each polygon config. Today our configs use deterministic provisional UUIDs (`30000000-0000-4000-8000-000000000101`..`0122` for `B2`, and `30000000-0000-4000-8000-000000000201`..`0227` for `B4`) alongside `lot_code: "B"`.
+- Over HTTP (`CANDIDATE-2026-10-30.2`), `data.space_id` carries a UUID string read from each polygon config. Today our configs use deterministic provisional UUIDs (`30000000-0000-4000-8000-000000000101`..`0122` for `B2`, `30000000-0000-4000-8000-000000000301`..`0320` for `B3`, and `30000000-0000-4000-8000-000000000201`..`0227` for `B4`) alongside `lot_code: "B"`.
 - **Zero-code swap:** Once the backend generates its canonical slot records (your `B-P...` display codes and database UUIDs), share the `(area, slot_id) -> (space_id UUID, backend_code)` seed mapping and we will update `space_id` directly in `configs/polygons/area_b*.json` without changing any pipeline code.
 
-### Complete Active Slot Inventory — Lot `B2` (22 Bays) & Lot `B4` (27 Bays)
+### Complete Active Slot Inventory — Lot `B2` (22), Lot `B3` (20) & Lot `B4` (27) = 69 Bays
 
-Built directly from `outputs/lots_b2_b4/lot_b2_occupancy.csv` (**21/22** occupied), `outputs/lots_b2_b4/lot_b4_occupancy.csv` (**27/27** occupied), and combined `outputs/lots_b2_b4/lot_b2_b4_occupancy.csv` (**48/49** occupied, **98.0%**), joined with `configs/polygons/area_b2.json` and `configs/polygons/area_b4.json`.
+Built directly from `outputs/lots_b2_b4/lot_b2_occupancy.csv` (**21/22** occupied), `outputs/lots_b2_b4/lot_b3_occupancy.csv` (**19/20** occupied, `R10` PWD empty), `outputs/lots_b2_b4/lot_b4_occupancy.csv` (**27/27** occupied), and combined `outputs/lots_b2_b4/lot_b2_b3_b4_occupancy.csv` (**67/69** occupied, **97.1%**), joined with [`area_b2.json`](../configs/polygons/area_b2.json), [`area_b3.json`](../configs/polygons/area_b3.json), and [`area_b4.json`](../configs/polygons/area_b4.json). *(See [`LOT_B3_KNOWLEDGE.md`](LOT_B3_KNOWLEDGE.md) for B3 informal aisle zones `A1–A3` and PWD `R10` details.)*
 
 <details>
-<summary>Expand full 49-slot CSV-backed mapping table (Area B2: 22 slots, Area B4: 27 slots)</summary>
+<summary>Expand full 69-slot CSV-backed mapping table (Area B2: 22, Area B3: 20, Area B4: 27)</summary>
 
 #### Area B2 (`camera_id: cam-area-b2-01`, `producer_id: occupancy-area-b2-01`, `calibration_version: area-b2-4model-v1`)
 
@@ -61,6 +61,31 @@ Built directly from `outputs/lots_b2_b4/lot_b2_occupancy.csv` (**21/22** occupie
 | `B2` | `R9` | `right` | `car_only` | `30000000-0000-4000-8000-000000000120` | `available` | `0.8990` | `0.7692` | `0.5330` | `0.8570` | `0.7853` | `occupied` | `1` | TBD (`B-P...`) |
 | `B2` | `R10` | `right` | `car_only` | `30000000-0000-4000-8000-000000000121` | `available` | `0.8860` | `0.7583` | `0.4943` | `0.8461` | `0.7686` | `occupied` | `1` | TBD (`B-P...`) |
 | `B2` | `R11` | `right` | `car_only` | `30000000-0000-4000-8000-000000000122` | `available` | `0.8270` | `0.7092` | `0.3186` | `0.7997` | `0.6940` | `occupied` | `1` | TBD (`B-P...`) |
+
+#### Area B3 (`camera_id: cam-area-b3-01`, `producer_id: occupancy-area-b3-01`, `calibration_version: area-b3-4model-v0-provisional`)
+
+| Area | `slot_id` | Zone | `compatibility` | Provisional `space_id` (`CANDIDATE-2026-10-30.2`) | `initial_state` | `model_1` | `model_2` | `model_3` | `model_4` | `mean` | `final_state` | `final_id` | Backend Display Code |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `B3` | `L1` | `left` | `car_only` | `30000000-0000-4000-8000-000000000301` | `occupied` | `0.9087` | `0.7189` | `0.9111` | `0.9258` | `0.8892` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `L2` | `left` | `car_only` | `30000000-0000-4000-8000-000000000302` | `occupied` | `0.9129` | `0.8958` | `0.9104` | `0.9257` | `0.9162` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `L3` | `left` | `car_only` | `30000000-0000-4000-8000-000000000303` | `occupied` | `0.9057` | `0.8087` | `0.8930` | `0.9229` | `0.8972` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `L4` | `left` | `car_only` | `30000000-0000-4000-8000-000000000304` | `occupied` | `0.8883` | `0.8334` | `0.8973` | `0.9236` | `0.8995` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `L5` | `left` | `car_only` | `30000000-0000-4000-8000-000000000305` | `occupied` | `0.9113` | `0.7045` | `0.8176` | `0.9108` | `0.8613` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `L6` | `left` | `car_only` | `30000000-0000-4000-8000-000000000306` | `occupied` | `0.9014` | `0.6868` | `0.9115` | `0.9258` | `0.8835` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `L7` | `left` | `car_only` | `30000000-0000-4000-8000-000000000307` | `occupied` | `0.9024` | `0.7860` | `0.9469` | `0.9315` | `0.9084` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `L8` | `left` | `car_only` | `30000000-0000-4000-8000-000000000308` | `occupied` | `0.8908` | `0.8444` | `0.9402` | `0.9304` | `0.9135` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `L9` | `left` | `car_only` | `30000000-0000-4000-8000-000000000309` | `occupied` | `0.9048` | `0.4547` | `0.9267` | `0.3817` | `0.5801` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `R1` | `right` | `car_only` | `30000000-0000-4000-8000-000000000310` | `occupied` | `0.9354` | `0.6985` | `0.8406` | `0.9145` | `0.8704` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `R2` | `right` | `car_only` | `30000000-0000-4000-8000-000000000311` | `occupied` | `0.9571` | `0.7162` | `0.7406` | `0.9221` | `0.8601` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `R3` | `right` | `car_only` | `30000000-0000-4000-8000-000000000312` | `occupied` | `0.9364` | `0.7793` | `0.7406` | `0.9100` | `0.8605` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `R4` | `right` | `car_only` | `30000000-0000-4000-8000-000000000313` | `occupied` | `0.9580` | `0.7393` | `0.8669` | `0.9534` | `0.9047` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `R5` | `right` | `car_only` | `30000000-0000-4000-8000-000000000314` | `occupied` | `0.9857` | `0.7670` | `0.8572` | `0.9450` | `0.9069` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `R6` | `right` | `car_only` | `30000000-0000-4000-8000-000000000315` | `occupied` | `0.9221` | `0.9620` | `0.9284` | `0.9643` | `0.9505` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `R7` | `right` | `car_only` | `30000000-0000-4000-8000-000000000316` | `occupied` | `0.9952` | `0.8552` | `0.9447` | `0.9807` | `0.9568` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `R8` | `right` | `car_only` | `30000000-0000-4000-8000-000000000317` | `occupied` | `0.8840` | `0.7660` | `0.9255` | `0.9281` | `0.8966` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `R9` | `right` | `car_only` | `30000000-0000-4000-8000-000000000318` | `occupied` | `0.9200` | `0.6698` | `0.9467` | `0.9315` | `0.8935` | `occupied` | `1` | TBD (`B-P...`) |
+| `B3` | `R10` | `right` | `car_only` | `30000000-0000-4000-8000-000000000319` | `available` | `0.1348` | `0.3025` | `0.0000` | `0.1353` | `0.1333` | `available` | `0` | TBD (`B-P...`) |
+| `B3` | `C1` | `center` | `car_only` | `30000000-0000-4000-8000-000000000320` | `occupied` | `0.8941` | `0.8686` | `0.9328` | `0.9292` | `0.9156` | `occupied` | `1` | TBD (`B-P...`) |
 
 #### Area B4 (`camera_id: cam-area-b4-01`, `producer_id: occupancy-area-b4-01`, `calibration_version: area-b4-4model-v1`)
 
@@ -102,8 +127,9 @@ Built directly from `outputs/lots_b2_b4/lot_b2_occupancy.csv` (**21/22** occupie
 
 - **Strict two-type enum (`car_only | motorcycle_only`):** Every parking space in `src/parking_occupancy/geometry.py` and `configs/polygons/*.json` is explicitly typed as either **`car_only`** or **`motorcycle_only`**. We **do not support `mixed` slots** so stall polygons and capacity rules remain unambiguous:
   - **Area `B2` (22 total):** `22 car_only`, `0 motorcycle_only`, `0 mixed`.
+  - **Area `B3` (20 total, provisional):** `20 car_only` (`L1–L9`, `R1–R10`, `C1`; includes accessible PWD bay `R10`), `0 motorcycle_only`, `0 mixed`.
   - **Area `B4` (27 total):** `18 car_only` (`L1–L8`, `R1–R10`), `9 motorcycle_only` (`MB1–MB9`), `0 mixed`.
-  - **`B3` / `B1` / `B5`:** Will follow the same strict `car_only | motorcycle_only` classification upon calibration.
+  - **`B1` / `B5`:** Will follow the same strict `car_only | motorcycle_only` classification upon calibration.
 - **Admin / Faculty Reservations (`Lot A` & `B1–B5` policy):**
   - **Lot `A` is outside our `B1–B5` scope.**
   - Within `B1–B5`, the vision service emits **physical occupancy only** (`occupied | available | unknown`) and **never handles driver identities, plates, permits, or role reservations** (`SEC-02`). Any admin/faculty or reserved-bay flags belong strictly in the backend space metadata table and are overlaid on top of physical occupancy in the backend/UI.
@@ -120,7 +146,7 @@ Our topology assigns **1 fixed overhead/oblique camera per sub-area** and **1 un
 |---|---|---|---|---|
 | `cam-area-b2-01` | `occupancy-area-b2-01` | All **22** bays in Area `B2` (`...0101`–`...0122`) | 1 API key (`occupancy-area-b2-01`) | Active |
 | `cam-area-b4-01` | `occupancy-area-b4-01` | All **27** bays in Area `B4` (`...0201`–`...0227`) | 1 API key (`occupancy-area-b4-01`) | Active |
-| `cam-area-b3-01` | `occupancy-area-b3-01` | All Area `B3` bays | 1 API key (`occupancy-area-b3-01`) | Active rollout |
+| `cam-area-b3-01` | `occupancy-area-b3-01` | All **20** bays in Area `B3` (`...0301`–`...0320`) | 1 API key (`occupancy-area-b3-01`) | Active (provisional) |
 | `cam-area-b1-01` | `occupancy-area-b1-01` | All Area `B1` bays | 1 API key (`occupancy-area-b1-01`) | Planned |
 | `cam-area-b5-01` | `occupancy-area-b5-01` | All Area `B5` bays | 1 API key (`occupancy-area-b5-01`) | Planned |
 
@@ -130,7 +156,7 @@ Our topology assigns **1 fixed overhead/oblique camera per sub-area** and **1 un
 
 1. **Shared Model Sessions, Isolated Camera State:** In `scripts/lots_b2_b4/fusion_4model.py`, ONNX Runtime sessions (`YOLOX-L` and `MiDaS-small`) are cached once under `_ONNX_CACHE` (guarded by `_CACHE_LOCK`), so multiple camera threads/workers share model weights in memory instead of reloading models per lot. Meanwhile, each camera maintains its own homography, `PolygonMap`, `boot_id`, `FreshnessTracker`, `StateSmoother`, and monotonic `sequence_number`.
 2. **Per-Device Independent Streams:** In deployment (`python -m parking_occupancy --config configs/cameras/area_b<n>.yaml`), each camera authenticates independently with its own `producer_id` and per-device API key so a stall or offline event on one camera never blocks or corrupts telemetry from other areas.
-3. **Combined Local Throughput:** Running `scripts/run_lots_b2_b4_local.py` already executes full 4-model inference sequentially across both calibrated areas (`B2` + `B4`, 49 slots) in a single run, and lightweight change-monitoring across `B2, B3, B4` easily leaves headroom to run full 4-model inference well within a `<= 30s` cycle whenever active traffic demands it.
+3. **Combined Local Throughput:** Running [`scripts/run_lots_b2_b4_local.py`](../scripts/run_lots_b2_b4_local.py) already executes full 4-model inference across all 3 active areas (`B2` + `B3` + `B4`, **69 slots**), while [`scripts/lot_b3/change_monitor.py`](../scripts/lot_b3/change_monitor.py) handles shadow-robust (`change_threshold: 0.35`, `persist_frames: 3`) quiet suppression + `20s` active bursts (`<= 30s`, i.e. `>= 2` full updates/min).
 
 ---
 
@@ -235,15 +261,16 @@ Use **[`docs/sample_b2_b4_messages.json`](sample_b2_b4_messages.json)** as your 
   - `B2 L1` stale transition (`physical_status = "unknown"`, `confidence = null`)
 - Valid `device_heartbeat` payloads for `occupancy-area-b2-01` and `occupancy-area-b4-01`
 
-### 2. Local CSV & 4-Model Pipeline Runner (Produces 49-Bay CSV + Mock SENTRY Events)
+### 2. Local CSV & 4-Model Pipeline Runner (Produces 69-Bay CSV + Mock SENTRY Events)
 
 From `ai_services/parking_occupancy/`:
 
 ```bash
 python scripts/run_lots_b2_b4_local.py
+python scripts/lot_b3/change_monitor.py --selftest
 ```
 
-Outputs `outputs/lots_b2_b4/lot_b2_b4_occupancy.csv` (49 rows across `B2` & `B4`: `48/49` occupied, `B2 = 21/22`, `B4 = 27/27`), per-lot and combined 2D slot maps (`lot_b2_2d_map.png`, `lot_b4_2d_map.png`, `lot_b2_b4_combined_2d_map.png`), and validates 49 mock SENTRY events (`correlation_id: null`). *(Note: `outputs/` is gitignored locally; run the command above to generate the full 49-row CSV.)*
+Outputs `outputs/lots_b2_b4/lot_b2_b3_b4_occupancy.csv` (**69 rows** across `B2`, `B3` & `B4`: `67/69` occupied, `B2 = 21/22`, `B3 = 19/20`, `B4 = 27/27`), per-lot CSVs, per-lot and combined 2D slot maps (`lot_b2_2d_map.png`, `lot_b3_2d_map.png`, `lot_b4_2d_map.png`, `lot_b2_b3_b4_combined_2d_map.png`), and validates 69 mock SENTRY events (`correlation_id: null`). *(Note: `outputs/` is gitignored locally; run the command above to generate the full 69-row CSV.)*
 
 ### 3. Single-Camera CLI Simulator (`SyntheticDetector` Mock Mode)
 
@@ -269,7 +296,7 @@ PYTHONPATH=src python -m pytest tests/contract/test_events.py -q
 
 ## Backend Team Action Items to Unblock Integration
 
-1. **Canonical Slot Mapping Seed:** Provide your `(area, slot_id) -> (B-P... display code, database UUID)` table for `B2` (22 bays), `B4` (27 bays), and upcoming `B3`.
+1. **Canonical Slot Mapping Seed:** Provide your `(area, slot_id) -> (B-P... display code, database UUID)` table for `B2` (22 bays), `B3` (20 bays), and `B4` (27 bays).
 2. **Per-Device Credentials (`SEC-01`):** Issue one API key per `device_id`: `occupancy-area-b2-01`, `occupancy-area-b4-01`, and `occupancy-area-b3-01` (with `b1-01` / `b5-01` reserved for expansion).
 3. **`confidence` Convention for `available` Slots:** Confirm whether you expect certainty in `physical_status` (`1 - P(occupied) = 0.9178` for `B2 L3`) or raw `P(occupied)` (`0.0822`).
 4. **Silent-Camera Timeout Confirmation:** Confirm `120–180s` timeout driven by **`device_heartbeat`** (`60s` interval) rather than `occupancy_observation` silence so quiet unchanged lots do not false-stale.

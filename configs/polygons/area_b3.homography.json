@@ -1,0 +1,29 @@
+{
+  "method": "R10 painted-bay rectangle + Wigo wheelbase scale",
+  "bay_depth_L_m": 4.33,
+  "H_photo_px_to_metres_u_v": [
+    [
+      -0.022022977332600988,
+      -0.013415011573157954,
+      52.82160806930947
+    ],
+    [
+      0.00797126909565364,
+      -0.03924317093244867,
+      45.92677348188132
+    ],
+    [
+      -0.0002742274152538246,
+      -0.00253668652073512,
+      1.0
+    ]
+  ],
+  "plan_window_m": [
+    -17.0,
+    5.5,
+    -23.5,
+    6.5
+  ],
+  "px_per_m": 60,
+  "accuracy": "indicative: ~0.5 m near R8-R10, worse toward L1/R1; anything above ground level (car roofs) is smeared outward"
+}
