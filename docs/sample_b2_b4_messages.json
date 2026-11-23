@@ -1,0 +1,250 @@
+{
+  "contract_reference": "CANDIDATE-2026-10-30.2",
+  "schema_version": "1.0.0",
+  "generated_from": "outputs/lots_b2_b4/lot_b2_b4_occupancy.csv",
+  "campus_scope": {
+    "lot_group": "B1-B5",
+    "understood_and_calibrated": ["B2", "B4"],
+    "understood_pending_camera_frame": ["B3"],
+    "planned": ["B1", "B5"]
+  },
+  "csv_source_rows_excerpt": [
+    {
+      "area": "B2",
+      "slot_id": "L1",
+      "initial_state": "occupied",
+      "model_1": 0.9119,
+      "model_2": 0.5144,
+      "model_3": 0.9466,
+      "model_4": 0.8457,
+      "mean": 0.8261,
+      "final_state": "occupied",
+      "final_id": 1
+    },
+    {
+      "area": "B2",
+      "slot_id": "L3",
+      "initial_state": "available",
+      "model_1": 0.0787,
+      "model_2": 0.1186,
+      "model_3": 0.0,
+      "model_4": 0.1052,
+      "mean": 0.0822,
+      "final_state": "available",
+      "final_id": 0
+    },
+    {
+      "area": "B2",
+      "slot_id": "R7",
+      "initial_state": "available",
+      "model_1": 0.918,
+      "model_2": 0.77,
+      "model_3": 0.536,
+      "model_4": 0.8618,
+      "mean": 0.7913,
+      "final_state": "occupied",
+      "final_id": 1
+    },
+    {
+      "area": "B4",
+      "slot_id": "L1",
+      "initial_state": "occupied",
+      "model_1": 0.9044,
+      "model_2": 0.56,
+      "model_3": 0.79,
+      "model_4": 0.893,
+      "mean": 0.8242,
+      "final_state": "occupied",
+      "final_id": 1
+    },
+    {
+      "area": "B4",
+      "slot_id": "MB1",
+      "initial_state": "occupied",
+      "model_1": 0.7951,
+      "model_2": 0.56,
+      "model_3": 0.75,
+      "model_4": 0.893,
+      "mean": 0.7998,
+      "final_state": "occupied",
+      "final_id": 1
+    }
+  ],
+  "slot_id_mapping_examples": [
+    {
+      "area": "B2",
+      "local_slot_id": "L1",
+      "provisional_space_id": "30000000-0000-4000-8000-000000000101",
+      "vehicle_type": "car_only",
+      "backend_code_example": "B-P7AB12CD34"
+    },
+    {
+      "area": "B2",
+      "local_slot_id": "L3",
+      "provisional_space_id": "30000000-0000-4000-8000-000000000103",
+      "vehicle_type": "car_only"
+    },
+    {
+      "area": "B2",
+      "local_slot_id": "R7",
+      "provisional_space_id": "30000000-0000-4000-8000-000000000118",
+      "vehicle_type": "car_only"
+    },
+    {
+      "area": "B4",
+      "local_slot_id": "L1",
+      "provisional_space_id": "30000000-0000-4000-8000-000000000201",
+      "vehicle_type": "car_only"
+    },
+    {
+      "area": "B4",
+      "local_slot_id": "MB1",
+      "provisional_space_id": "30000000-0000-4000-8000-000000000219",
+      "vehicle_type": "motorcycle_only"
+    }
+  ],
+  "occupancy_observations": [
+    {
+      "_example": "B2 L1 (car_only, occupied; CSV mean=0.8261)",
+      "schema_version": "1.0.0",
+      "event_id": "11111111-1111-4111-8111-111111111101",
+      "event_type": "occupancy_observation",
+      "occurred_at": "2026-11-23T12:00:00Z",
+      "producer_id": "occupancy-area-b2-01",
+      "correlation_id": null,
+      "data": {
+        "lot_code": "B",
+        "space_id": "30000000-0000-4000-8000-000000000101",
+        "physical_status": "occupied",
+        "confidence": 0.8261,
+        "boot_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c02",
+        "sequence_number": 1,
+        "calibration_version": "area-b2-4model-v1",
+        "model_version": "sentry-4model-b2-b4-v1"
+      }
+    },
+    {
+      "_example": "B2 L3 (car_only, available; CSV occupancy mean=0.0822 => status confidence 1 - 0.0822 = 0.9178)",
+      "schema_version": "1.0.0",
+      "event_id": "11111111-1111-4111-8111-111111111102",
+      "event_type": "occupancy_observation",
+      "occurred_at": "2026-11-23T12:00:00Z",
+      "producer_id": "occupancy-area-b2-01",
+      "correlation_id": null,
+      "data": {
+        "lot_code": "B",
+        "space_id": "30000000-0000-4000-8000-000000000103",
+        "physical_status": "available",
+        "confidence": 0.9178,
+        "boot_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c02",
+        "sequence_number": 2,
+        "calibration_version": "area-b2-4model-v1",
+        "model_version": "sentry-4model-b2-b4-v1"
+      }
+    },
+    {
+      "_example": "B2 R7 (car_only, far-end stacked slot promoted from initial_state=available to occupied; CSV mean=0.7913)",
+      "schema_version": "1.0.0",
+      "event_id": "11111111-1111-4111-8111-111111111103",
+      "event_type": "occupancy_observation",
+      "occurred_at": "2026-11-23T12:00:00Z",
+      "producer_id": "occupancy-area-b2-01",
+      "correlation_id": null,
+      "data": {
+        "lot_code": "B",
+        "space_id": "30000000-0000-4000-8000-000000000118",
+        "physical_status": "occupied",
+        "confidence": 0.7913,
+        "boot_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c02",
+        "sequence_number": 3,
+        "calibration_version": "area-b2-4model-v1",
+        "model_version": "sentry-4model-b2-b4-v1"
+      }
+    },
+    {
+      "_example": "B4 L1 (car_only, occupied; CSV mean=0.8242)",
+      "schema_version": "1.0.0",
+      "event_id": "22222222-2222-4222-8222-222222222201",
+      "event_type": "occupancy_observation",
+      "occurred_at": "2026-11-23T12:00:00Z",
+      "producer_id": "occupancy-area-b4-01",
+      "correlation_id": null,
+      "data": {
+        "lot_code": "B",
+        "space_id": "30000000-0000-4000-8000-000000000201",
+        "physical_status": "occupied",
+        "confidence": 0.8242,
+        "boot_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c04",
+        "sequence_number": 1,
+        "calibration_version": "area-b4-4model-v1",
+        "model_version": "sentry-4model-b2-b4-v1"
+      }
+    },
+    {
+      "_example": "B4 MB1 (motorcycle_only bay, occupied; CSV mean=0.7998)",
+      "schema_version": "1.0.0",
+      "event_id": "22222222-2222-4222-8222-222222222202",
+      "event_type": "occupancy_observation",
+      "occurred_at": "2026-11-23T12:00:00Z",
+      "producer_id": "occupancy-area-b4-01",
+      "correlation_id": null,
+      "data": {
+        "lot_code": "B",
+        "space_id": "30000000-0000-4000-8000-000000000219",
+        "physical_status": "occupied",
+        "confidence": 0.7998,
+        "boot_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c04",
+        "sequence_number": 2,
+        "calibration_version": "area-b4-4model-v1",
+        "model_version": "sentry-4model-b2-b4-v1"
+      }
+    },
+    {
+      "_example": "B2 L1 stale frame transition (> 30.0s without fresh frame => unknown, confidence MUST be null)",
+      "schema_version": "1.0.0",
+      "event_id": "11111111-1111-4111-8111-111111111104",
+      "event_type": "occupancy_observation",
+      "occurred_at": "2026-11-23T12:00:35Z",
+      "producer_id": "occupancy-area-b2-01",
+      "correlation_id": null,
+      "data": {
+        "lot_code": "B",
+        "space_id": "30000000-0000-4000-8000-000000000101",
+        "physical_status": "unknown",
+        "confidence": null,
+        "boot_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c02",
+        "sequence_number": 4,
+        "calibration_version": "area-b2-4model-v1",
+        "model_version": "sentry-4model-b2-b4-v1"
+      }
+    }
+  ],
+  "device_heartbeats": [
+    {
+      "_example": "Area B2 periodic liveness heartbeat (every 60s even when occupancy updates are suppressed due to no significant change)",
+      "schema_version": "1.0.0",
+      "event_id": "33333333-3333-4333-8333-333333333301",
+      "event_type": "device_heartbeat",
+      "occurred_at": "2026-11-23T12:01:00Z",
+      "producer_id": "occupancy-area-b2-01",
+      "correlation_id": null,
+      "data": {
+        "boot_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c02",
+        "lot_code": "B"
+      }
+    },
+    {
+      "_example": "Area B4 periodic liveness heartbeat",
+      "schema_version": "1.0.0",
+      "event_id": "33333333-3333-4333-8333-333333333302",
+      "event_type": "device_heartbeat",
+      "occurred_at": "2026-11-23T12:01:00Z",
+      "producer_id": "occupancy-area-b4-01",
+      "correlation_id": null,
+      "data": {
+        "boot_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c04",
+        "lot_code": "B"
+      }
+    }
+  ]
+}
