@@ -1,0 +1,26 @@
+# Lot B4 Camera Configuration (27-Bay 4-Model Optimization: 18 Cars + 9 Motorcycles)
+# Uses planar tyre-line calibrated homography at 2048x1536 resolution.
+
+camera_id: cam-area-b4-01
+lot_code: B
+device_id: occupancy-area-b4-01
+model_version: sentry-4model-b2-b4-v1
+
+# Camera source left empty so --still / local runner supplies input
+source: ""
+
+# Must match Lot B4 calibration resolution in configs/polygons/area_b4.json
+reference_resolution: [2048, 1536]
+
+# Path to Lot B4 27-bay polygon & homography config (relative to module root)
+polygon_config: configs/polygons/area_b4.json
+
+# Dual-model ONNX weights live in models/ (gitignored) and are cached by scripts/lots_b2_b4/fusion_4model.py
+model_path: ""
+
+# Temporal smoothing — 1 frame confirms transition for local still/HTTP audits
+smoothing_consecutive_frames: 1
+
+# Freshness & heartbeat
+freshness_threshold_s: 30.0
+heartbeat_interval_s: 60.0

@@ -1,10 +1,10 @@
-# Area B2 Camera Configuration (29-Slot Dual-Model Cross-Check)
+# Lot B2 Camera Configuration (22-Bay 4-Model Optimization)
 # Uses pinhole pure-rotation homography calibrated at 2048x1536 resolution.
 
 camera_id: cam-area-b2-01
 lot_code: B
 device_id: occupancy-area-b2-01
-model_version: yolox-midas-b2-v1
+model_version: sentry-4model-b2-b4-v1
 
 # Camera source left empty so --still / --folder / --video / local runner supplies input
 source: ""
@@ -12,13 +12,13 @@ source: ""
 # Must match Area B2 calibration resolution in configs/polygons/area_b2.json
 reference_resolution: [2048, 1536]
 
-# Path to Area B2 29-slot polygon & homography config (relative to module root)
+# Path to Lot B2 22-bay polygon & homography config (relative to module root)
 polygon_config: configs/polygons/area_b2.json
 
-# Dual-model ONNX weights live in models/ (gitignored) and are invoked by scripts/run_area_b2_local.py
+# Dual-model ONNX weights live in models/ (gitignored) and are cached by scripts/lots_b2_b4/fusion_4model.py
 model_path: ""
 
-# Temporal smoothing — 1 frame confirms transition for still-frame local audits
+# Temporal smoothing — 1 frame confirms transition for local still/HTTP audits
 smoothing_consecutive_frames: 1
 
 # Freshness & heartbeat
