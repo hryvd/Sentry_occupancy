@@ -597,7 +597,47 @@
     }
 
     function normalizeApiBase(raw) {
-      return String(raw || '').trim().replace(/\/+$/, '');
+      let s = String(raw || '').trim();
+      if (!s) return '';
+      if (!/^https?:\/\//i.test(s)) {
+        const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(s);
+        s = `${isLocal ? 'http' : 'https'}://${s}`;
+      }
+      s = s.replace(/\/api\/(health|upload|uploads|analyze|lots)\/?$/i, '');
+      s = s.replace(/\/api\/?$/i, '');
+      return s.replace(/\/+$/, '');
+    }
+
+    function syncConnectionInputsToState() {
+      const urlEl = document.getElementById('apiUrlInput');
+      const tokEl = document.getElementById('apiTokenInput');
+      const cleanUrl = normalizeApiBase(urlEl ? urlEl.value : state.apiBaseUrl);
+      const cleanTok = String(tokEl ? tokEl.value : state.apiToken || '').trim();
+      state.apiBaseUrl = cleanUrl;
+      state.apiToken = cleanTok;
+      if (urlEl && urlEl.value !== cleanUrl) urlEl.value = cleanUrl;
+      if (cleanUrl) localStorage.setItem(LS_API_URL, cleanUrl);
+      else localStorage.removeItem(LS_API_URL);
+      if (cleanTok) localStorage.setItem(LS_API_TOKEN, cleanTok);
+      else localStorage.removeItem(LS_API_TOKEN);
+    }
+
+    function ensureRemoteTargetConfigured() {
+      syncConnectionInputsToState();
+      if (!isLocalHostname() && !state.apiBaseUrl) {
+        const panel = document.getElementById('connectionPanel');
+        const urlEl = document.getElementById('apiUrlInput');
+        if (panel) panel.classList.remove('hidden');
+        if (urlEl) urlEl.focus();
+        throw new Error('PC Tunnel URL is not configured yet. Paste your PC HTTPS tunnel URL (e.g. https://xxxx.app.lhr.life) and access token in the Computer Connection panel above, then tap Test & Save.');
+      }
+      if (!isLocalHostname() && state.apiBaseUrl.toLowerCase() === window.location.origin.toLowerCase()) {
+        const panel = document.getElementById('connectionPanel');
+        const urlEl = document.getElementById('apiUrlInput');
+        if (panel) panel.classList.remove('hidden');
+        if (urlEl) urlEl.focus();
+        throw new Error('The Connection URL is set to this Vercel site instead of your PC tunnel. Paste your PC HTTPS tunnel URL (e.g. https://xxxx.app.lhr.life).');
+      }
     }
 
     function initConnectionFromParamsAndStorage() {
@@ -649,6 +689,17 @@
       return fetch(url, { ...options, headers });
     }
 
+    async function parseJsonResponse(resp) {
+      const text = await resp.text();
+      if (!text && resp.ok) return {};
+      try {
+        return JSON.parse(text);
+      } catch (_) {
+        const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 90);
+        throw new Error(`HTTP ${resp.status} from ${getEffectiveOriginLabel()} returned non-JSON ("${snippet}") — verify your PC HTTPS Tunnel URL in Connection settings`);
+      }
+    }
+
     function escapeHtml(str) {
       return String(str ?? '')
         .replace(/&/g, '&amp;')
@@ -682,13 +733,15 @@
 
     async function checkBackendHealth(refreshData = true) {
       if (!state.apiBaseUrl && !isLocalHostname()) {
+        const panel = document.getElementById('connectionPanel');
+        if (panel) panel.classList.remove('hidden');
         updateConnectionBadge('offline', 'Vercel static demo — configure PC tunnel URL to upload');
         return false;
       }
       try {
         const resp = await apiFetch('/api/health');
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
+        const data = await parseJsonResponse(resp);
+        if (!resp.ok) throw new Error((data && data.error) || `HTTP ${resp.status}`);
         if (!data || !data.ok) throw new Error('Invalid health payload');
         if (data.auth_required && !data.authenticated) {
           updateConnectionBadge('unauthorized', `Token required by ${getEffectiveOriginLabel()}`);
@@ -709,7 +762,7 @@
     function fetchRemoteLots() {
       if (!state.apiBaseUrl && !isLocalHostname()) return;
       apiFetch('/api/lots')
-        .then(r => (r.ok ? r.json() : null))
+        .then(async r => (r.ok ? parseJsonResponse(r) : null))
         .then(d => {
           if (d && d.ok && d.lots) {
             state.lots = d.lots;
@@ -720,6 +773,7 @@
     }
 
     async function fetchRecentUploads() {
+      syncConnectionInputsToState();
       const box = document.getElementById('recentUploadsList');
       if (!state.apiBaseUrl && !isLocalHostname()) {
         box.innerHTML = '<div class="text-slate-500 text-[11px] font-mono py-6 text-center">Set your PC tunnel URL in Connection settings above to view saved uploads.</div>';
@@ -731,7 +785,7 @@
           box.innerHTML = '<div class="text-rose-300 text-[11px] font-mono py-5 text-center">Token required — enter your access token in Connection settings.</div>';
           return;
         }
-        const data = await resp.json();
+        const data = await parseJsonResponse(resp);
         if (!resp.ok || !data.ok) throw new Error(data.error || `HTTP ${resp.status}`);
         state.recentUploads = data.uploads || [];
         renderRecentUploads();
@@ -1369,6 +1423,7 @@
       showUploadResult(true, '<span class="font-mono">Uploading image to computer...</span>', false);
 
       try {
+        ensureRemoteTargetConfigured();
         const note = document.getElementById('uploadNoteInput').value || '';
         const resp = await apiFetch('/api/upload', {
           method: 'POST',
@@ -1380,7 +1435,7 @@
             note
           })
         });
-        const data = await resp.json();
+        const data = await parseJsonResponse(resp);
         if (!resp.ok || !data.ok) throw new Error(data.error || `HTTP ${resp.status}`);
         const u = data.upload;
         showUploadResult(
@@ -1437,6 +1492,7 @@
       showUploadResult(true, `<span class="font-mono">Uploading &amp; running 4-Model AI for Lot ${targetArea}...</span>`, false);
 
       try {
+        ensureRemoteTargetConfigured();
         const resp = await apiFetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1447,7 +1503,7 @@
             note
           })
         });
-        const data = await resp.json();
+        const data = await parseJsonResponse(resp);
         if (!resp.ok || !data.ok) throw new Error(data.error || `HTTP ${resp.status}`);
 
         const img = new Image();
@@ -1472,12 +1528,13 @@
       const targetArea = (area === 'B3' || area === 'B4') ? area : 'B2';
       showUploadResult(true, `<span class="font-mono">Running 4-Model AI on saved PC photo (${escapeHtml(uploadId)})...</span>`, false);
       try {
+        ensureRemoteTargetConfigured();
         const resp = await apiFetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ upload_id: uploadId, area: targetArea })
         });
-        const data = await resp.json();
+        const data = await parseJsonResponse(resp);
         if (!resp.ok || !data.ok) throw new Error(data.error || `HTTP ${resp.status}`);
         await applyAnalyzedResponse(data, targetArea, null);
         showUploadResult(
@@ -1513,20 +1570,17 @@
     });
 
     document.getElementById('btnTestAndSaveConn').addEventListener('click', async () => {
-      const rawUrl = normalizeApiBase(document.getElementById('apiUrlInput').value);
-      const rawTok = String(document.getElementById('apiTokenInput').value || '').trim();
-      if (rawUrl) localStorage.setItem(LS_API_URL, rawUrl);
-      else localStorage.removeItem(LS_API_URL);
-      if (rawTok) localStorage.setItem(LS_API_TOKEN, rawTok);
-      else localStorage.removeItem(LS_API_TOKEN);
-
-      state.apiBaseUrl = rawUrl;
-      state.apiToken = rawTok;
+      syncConnectionInputsToState();
       const fb = document.getElementById('connFeedback');
       fb.classList.remove('hidden');
       fb.textContent = 'Testing /api/health...';
       const ok = await checkBackendHealth(true);
       fb.textContent = ok ? 'Connected & saved!' : 'Saved, but health check failed — check tunnel/token.';
+      if (ok) {
+        setTimeout(() => {
+          document.getElementById('connectionPanel').classList.add('hidden');
+        }, 1200);
+      }
       setTimeout(() => fb.classList.add('hidden'), 3500);
     });
 
@@ -1742,6 +1796,9 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       initConnectionFromParamsAndStorage();
+      if (!state.apiBaseUrl && !isLocalHostname()) {
+        document.getElementById('connectionPanel').classList.remove('hidden');
+      }
       setCaptureArea('B2');
       applyResponsiveLayout();
       preloadLotImages('B2');
