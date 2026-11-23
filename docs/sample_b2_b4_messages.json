@@ -12,6 +12,9 @@
     {
       "area": "B2",
       "slot_id": "L1",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000101",
       "initial_state": "occupied",
       "model_1": 0.9119,
       "model_2": 0.5144,
@@ -19,11 +22,15 @@
       "model_4": 0.8457,
       "mean": 0.8261,
       "final_state": "occupied",
-      "final_id": 1
+      "final_id": 1,
+      "backend_display_code": "TBD (B-P...)"
     },
     {
       "area": "B2",
       "slot_id": "L3",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000103",
       "initial_state": "available",
       "model_1": 0.0787,
       "model_2": 0.1186,
@@ -31,11 +38,15 @@
       "model_4": 0.1052,
       "mean": 0.0822,
       "final_state": "available",
-      "final_id": 0
+      "final_id": 0,
+      "backend_display_code": "TBD (B-P...)"
     },
     {
       "area": "B2",
       "slot_id": "R7",
+      "zone": "right",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000118",
       "initial_state": "available",
       "model_1": 0.918,
       "model_2": 0.77,
@@ -43,11 +54,15 @@
       "model_4": 0.8618,
       "mean": 0.7913,
       "final_state": "occupied",
-      "final_id": 1
+      "final_id": 1,
+      "backend_display_code": "TBD (B-P...)"
     },
     {
       "area": "B4",
       "slot_id": "L1",
+      "zone": "left",
+      "compatibility": "car_only",
+      "space_id": "30000000-0000-4000-8000-000000000201",
       "initial_state": "occupied",
       "model_1": 0.9044,
       "model_2": 0.56,
@@ -55,11 +70,15 @@
       "model_4": 0.893,
       "mean": 0.8242,
       "final_state": "occupied",
-      "final_id": 1
+      "final_id": 1,
+      "backend_display_code": "TBD (B-P...)"
     },
     {
       "area": "B4",
       "slot_id": "MB1",
+      "zone": "moto",
+      "compatibility": "motorcycle_only",
+      "space_id": "30000000-0000-4000-8000-000000000219",
       "initial_state": "occupied",
       "model_1": 0.7951,
       "model_2": 0.56,
@@ -67,7 +86,8 @@
       "model_4": 0.893,
       "mean": 0.7998,
       "final_state": "occupied",
-      "final_id": 1
+      "final_id": 1,
+      "backend_display_code": "TBD (B-P...)"
     }
   ],
   "slot_id_mapping_examples": [

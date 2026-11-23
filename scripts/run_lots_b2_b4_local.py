@@ -11,7 +11,7 @@ Runs the 4-model fusion pipeline:
   Model 4 (50%): Top-down full geometry + context + YOLO re-analysis (highest weight)
 
 Outputs:
-  - CSV: area, slot_id, initial_state, model_1, model_2, model_3, model_4, mean, final_state, final_id
+  - CSV: area, slot_id, zone, compatibility, space_id, initial_state, model_1, model_2, model_3, model_4, mean, final_state, final_id, backend_display_code
   - 2D Maps: lot_b2_2d_map.png, lot_b4_2d_map.png, lot_b2_b4_combined_2d_map.png
   - SENTRY Mock Observations: 49 occupancy_observation events (correlation_id=null)
 """
@@ -342,7 +342,11 @@ def analyze_lot(
         ax, ay = to_photo_fn([[cx_m, cy_m]])[0]
         r["anchor"] = [round(float(np.clip(ax, 0, REF_W)), 1), round(float(np.clip(ay, 0, REF_H)), 1)]
         r["topview"] = [round(float(cx_m * SO.PPM * top_px_scale), 1), round(float(cy_m * SO.PPM * top_px_scale), 1)]
-        r["space_id"] = spaces_meta[r["slot_id"]]["space_id"]
+        sp_meta = spaces_meta[r["slot_id"]]
+        r["zone"] = sp_meta.get("zone", r.get("row", ""))
+        r["compatibility"] = sp_meta.get("compatibility", r.get("compatibility", ""))
+        r["space_id"] = sp_meta["space_id"]
+        r["backend_display_code"] = sp_meta.get("backend_display_code", "TBD (B-P...)")
         poly_px_cam = to_photo_fn(r["poly_m"])
         r["cam_poly"] = [[round(float(x), 1), round(float(y), 1)] for x, y in poly_px_cam]
 
@@ -487,9 +491,10 @@ def print_summary(report: dict[str, Any]) -> None:
     for area_key in ("B2", "B4"):
         for r in report["lots"][area_key]["slots"]:
             print(
-                f"{r['area']},{r['slot_id']},{r['initial_state']},"
+                f"{r['area']},{r['slot_id']},{r.get('zone', r.get('row', ''))},"
+                f"{r.get('compatibility', '')},{r.get('space_id', '')},{r['initial_state']},"
                 f"{r['model_1']:.4f},{r['model_2']:.4f},{r['model_3']:.4f},{r['model_4']:.4f},"
-                f"{r['mean']:.4f},{r['final_state']},{r['final_id']}"
+                f"{r['mean']:.4f},{r['final_state']},{r['final_id']},{r.get('backend_display_code', 'TBD (B-P...)')}"
             )
     print("-" * 104)
     print(f"CSV Output  : {report['csv_path']}")

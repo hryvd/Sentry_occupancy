@@ -43,6 +43,9 @@ WEIGHTS = (0.15, 0.15, 0.20, 0.50)
 CSV_HEADER = [
     "area",
     "slot_id",
+    "zone",
+    "compatibility",
+    "space_id",
     "initial_state",
     "model_1",
     "model_2",
@@ -51,6 +54,7 @@ CSV_HEADER = [
     "mean",
     "final_state",
     "final_id",
+    "backend_display_code",
 ]
 
 _CACHE_LOCK = threading.Lock()
@@ -350,7 +354,9 @@ def score_lot_4model(
             "area": area_code,
             "slot_id": s.id,
             "row": s.row,
+            "zone": s.row,
             "compatibility": s.compat,
+            "space_id": "",
             "initial_state": initial_state,
             "model_1": round(model_1, 4),
             "model_2": round(model_2, 4),
@@ -359,6 +365,7 @@ def score_lot_4model(
             "mean": mean_val,
             "final_state": final_state,
             "final_id": final_id,
+            "backend_display_code": "TBD (B-P...)",
             "matched_vehicle": v.id if v else "",
             "matched_kind": v.kind if v else "",
             "matched_method": v.method if v else "",
@@ -374,7 +381,7 @@ def score_lot_4model(
 
 
 def write_occupancy_csv(rows: list[dict[str, Any]], path: Path) -> None:
-    """Write CSV with exact requested columns: area,slot_id,initial_state,model_1..4,mean,final_state,final_id."""
+    """Write CSV with exact requested columns: area,slot_id,zone,compatibility,space_id,initial_state,model_1..4,mean,final_state,final_id,backend_display_code."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as fh:
         wr = csv.writer(fh)
@@ -383,6 +390,9 @@ def write_occupancy_csv(rows: list[dict[str, Any]], path: Path) -> None:
             wr.writerow([
                 r["area"],
                 r["slot_id"],
+                r.get("zone", r.get("row", "")),
+                r.get("compatibility", ""),
+                r.get("space_id", ""),
                 r["initial_state"],
                 f"{r['model_1']:.4f}",
                 f"{r['model_2']:.4f}",
@@ -391,6 +401,7 @@ def write_occupancy_csv(rows: list[dict[str, Any]], path: Path) -> None:
                 f"{r['mean']:.4f}",
                 r["final_state"],
                 r["final_id"],
+                r.get("backend_display_code", "TBD (B-P...)"),
             ])
 
 

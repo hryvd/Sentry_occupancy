@@ -2,7 +2,7 @@
 
 > **Scope Summary:** Campus parking sensors cover **Lot `B` sub-areas `B1–B5`** (`lot_code: "B"`). Active calibration and engineering coverage center on **`B2`, `B3`, and `B4`** (`B2` and `B4` are calibrated and running across **49 bays**; `B3` is in active rollout awaiting its fixed camera reference frame; `B1` and `B5` are planned). Lots `A`, `C`, and `D` are outside this service scope.
 >
-> **Architecture Alignment:** Backend HTTP `POST` occupancy messages are driven directly from our 4-model fusion CSV (`area,slot_id,initial_state,model_1,model_2,model_3,model_4,mean,final_state,final_id`). A lightweight continuous change-monitor suppresses occupancy `POST`s when there is no significant vehicle change (sending only `60s` heartbeats) and dispatches **at least 2 updated full final-state payloads per minute** (`<= 30s` cadence across active cameras) during high-change activity.
+> **Architecture Alignment:** Backend HTTP `POST` occupancy messages are driven directly from our 4-model fusion CSV (`area,slot_id,zone,compatibility,space_id,initial_state,model_1,model_2,model_3,model_4,mean,final_state,final_id,backend_display_code`). A lightweight continuous change-monitor suppresses occupancy `POST`s when there is no significant vehicle change (sending only `60s` heartbeats) and dispatches **at least 2 updated full final-state payloads per minute** (`<= 30s` cadence across active cameras) during high-change activity.
 
 ---
 
@@ -141,12 +141,12 @@ Our topology assigns **1 fixed overhead/oblique camera per sub-area** and **1 un
 Our 4-model pipeline (`scripts/lots_b2_b4/fusion_4model.py`) produces the authoritative per-slot CSV row schema:
 
 ```csv
-area,slot_id,initial_state,model_1,model_2,model_3,model_4,mean,final_state,final_id
-B2,L1,occupied,0.9119,0.5144,0.9466,0.8457,0.8261,occupied,1
-B2,L3,available,0.0787,0.1186,0.0000,0.1052,0.0822,available,0
-B2,R7,available,0.9180,0.7700,0.5360,0.8618,0.7913,occupied,1
-B4,L1,occupied,0.9044,0.5600,0.7900,0.8930,0.8242,occupied,1
-B4,MB1,occupied,0.7951,0.5600,0.7500,0.8930,0.7998,occupied,1
+area,slot_id,zone,compatibility,space_id,initial_state,model_1,model_2,model_3,model_4,mean,final_state,final_id,backend_display_code
+B2,L1,left,car_only,30000000-0000-4000-8000-000000000101,occupied,0.9119,0.5144,0.9466,0.8457,0.8261,occupied,1,TBD (B-P...)
+B2,L3,left,car_only,30000000-0000-4000-8000-000000000103,available,0.0787,0.1186,0.0000,0.1052,0.0822,available,0,TBD (B-P...)
+B2,R7,right,car_only,30000000-0000-4000-8000-000000000118,available,0.9180,0.7700,0.5360,0.8618,0.7913,occupied,1,TBD (B-P...)
+B4,L1,left,car_only,30000000-0000-4000-8000-000000000201,occupied,0.9044,0.5600,0.7900,0.8930,0.8242,occupied,1,TBD (B-P...)
+B4,MB1,moto,motorcycle_only,30000000-0000-4000-8000-000000000219,occupied,0.7951,0.5600,0.7500,0.8930,0.7998,occupied,1,TBD (B-P...)
 ```
 
 - **Weighted Fusion Formula:** `mean = 0.15 * model_1 (Geometry) + 0.15 * model_2 (Contextual) + 0.20 * model_3 (YOLOX-L) + 0.50 * model_4 (Top-Down BEV Re-Analysis)`
